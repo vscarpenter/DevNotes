@@ -1,0 +1,25 @@
+{
+  "enabled": true,
+  "name": "Documentation Sync",
+  "description": "Listens to TypeScript source files, configuration files, and other relevant project files. When changes are detected, triggers documentation updates in README.md or docs folder to keep documentation in sync with code changes.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "patterns": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "*.ts",
+      "*.tsx",
+      "package.json",
+      "tsconfig.json",
+      "vite.config.ts",
+      "tailwind.config.js",
+      "README.md",
+      "PRD.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Source code or configuration files have been modified in this TypeScript React project. Please review the changes and update the documentation accordingly. Focus on:\n\n1. Update README.md with any new features, API changes, or setup instructions\n2. If there's a /docs folder, update relevant documentation files there\n3. Ensure code examples in documentation match the current implementation\n4. Update any architectural diagrams or technical specifications if the structure has changed\n5. Verify that installation and usage instructions are still accurate\n\nPay special attention to changes in:\n- Component interfaces and props\n- Store structure and state management\n- Build configuration and dependencies\n- New features or removed functionality\n- API changes in hooks or utilities\n\nKeep the documentation clear, accurate, and helpful for developers using this DevNotes application."
+  }
+}

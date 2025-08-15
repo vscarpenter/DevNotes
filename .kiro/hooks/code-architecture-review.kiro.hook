@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "name": "Code Architecture Review",
+  "description": "Automatically reviews codebase for architectural patterns, scalability considerations, and SOLID principles adherence when source files are modified",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "patterns": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "src/**/*.js",
+      "src/**/*.jsx",
+      "package.json",
+      "tsconfig.json",
+      "vite.config.ts",
+      "tailwind.config.js"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Review this codebase for architectural patterns, scalability considerations, and adherence to SOLID principles. Identify any code smells, suggest refactoring opportunities, and comment on overall design quality. Focus on the modified files and their impact on the overall architecture."
+  }
+}

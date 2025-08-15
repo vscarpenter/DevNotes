@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "name": "Comprehensive Code Review",
+  "description": "Automatically triggers a comprehensive code review when TypeScript, JavaScript, or React files are modified, focusing on security vulnerabilities, code quality, performance, and error handling",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "patterns": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "src/**/*.js",
+      "src/**/*.jsx",
+      "*.ts",
+      "*.tsx",
+      "*.js",
+      "*.jsx"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Please perform a comprehensive code review focusing on:\n\nSecurity vulnerabilities - Check for common issues like SQL injection, XSS, authentication bypasses, insecure data handling, and secrets in code\nCode quality - Review for maintainability, readability, and adherence to best practices\nPerformance considerations - Identify potential bottlenecks or inefficient patterns\nError handling - Ensure proper exception handling and logging\n\nPlease provide:\n- Specific line numbers for any issues found\n- Severity level (Critical/High/Medium/Low) for security issues\n- Actionable recommendations for fixes\n- Any positive aspects of the code worth highlighting\n\nFocus on the DevNotes application context: a client-side React/TypeScript note-taking app using IndexedDB, Zustand state management, and markdown processing."
+  }
+}
