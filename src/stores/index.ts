@@ -23,13 +23,15 @@ export const clearAllStores = () => {
 
 // Development utilities
 export const getStoreStates = () => {
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
+    // Note: This function should be called after stores are imported
+    // to avoid circular dependency issues
     return {
-      notes: useNoteStore.getState(),
-      folders: useFolderStore.getState(),
-      ui: useUIStore.getState(),
-      search: useSearchStore.getState(),
-      app: useAppStore.getState()
+      notes: 'Use individual store getState() methods',
+      folders: 'Use individual store getState() methods',
+      ui: 'Use individual store getState() methods',
+      search: 'Use individual store getState() methods',
+      app: 'Use individual store getState() methods'
     };
   }
   return null;

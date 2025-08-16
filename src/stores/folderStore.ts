@@ -36,6 +36,9 @@ interface FolderState {
   getFolderPath: (id: string) => string[];
   isFolderExpanded: (id: string) => boolean;
   getFolderHierarchy: () => Folder[];
+  
+  // Helper methods
+  isDescendantOf: (folderId: string, potentialAncestorId: string) => boolean;
 }
 
 export const useFolderStore = create<FolderState>()(
@@ -260,7 +263,7 @@ export const useFolderStore = create<FolderState>()(
 
     getFolderPath: (id: string) => {
       const path: string[] = [];
-      let currentFolder = get().folders[id];
+      let currentFolder: Folder | undefined = get().folders[id];
       
       while (currentFolder) {
         path.unshift(currentFolder.name);

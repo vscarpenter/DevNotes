@@ -1,13 +1,44 @@
 /**
- * Unit tests for search store
- * Tests search operations and state management
+ * SearchStore tests
+ * Requirements: 5.1, 5.2, 5.4, 5.5
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useSearchStore } from '../searchStore';
-import { SearchResult, SearchFilters } from '../../types/search';
+import { searchEngine } from '../../lib/search/SearchEngine';
+import { SearchResult } from '../../types/search';
 
-describe('searchStore', () => {
+// Mock the search engine
+vi.mock('../../lib/search/SearchEngine', () => ({
+  searchEngine: {
+    search: vi.fn(),
+    initialize: vi.fn(),
+    indexNote: vi.fn(),
+    removeFromIndex: vi.fn(),
+    getRecentNotes: vi.fn(),
+    updateFolders: vi.fn()
+  }
+}));
+
+// Mock the other stores
+vi.mock('../noteStore', () => ({
+  useNoteStore: {
+    getState: vi.fn(() => ({
+      notes: {},
+      getNote: vi.fn()
+    }))
+  }
+}));
+
+vi.mock('../folderStore', () => ({
+  useFolderStore: {
+    getState: vi.fn(() => ({
+      folders: {}
+    }))
+  }
+}));
+
+describe('SearchStore', () => {
   beforeEach(() => {
     // Reset store state
     useSearchStore.setState({
@@ -19,378 +50,428 @@ describe('searchStore', () => {
       recentNotes: [],
       error: null
     });
+    
+    // Reset mocks
+    vi.clearAllMocks();
   });
 
-  describe('search operations', () => {
+  describe('Initial State', () => {
+    it('should have correct initial state', () => {
+      const state = useSearchStore.getState();
+      
+      expect(state.query).toBe('');
+      expect(state.results).toEqual([]);
+      expect(state.filters).toEqual({});
+      expect(state.isSearching).toBe(false);
+      expect(state.recentQueries).toEqual([]);
+      expect(state.recentNotes).toEqual([]);
+      expect(state.error).toBeNull();
+    });
+  });
+
+  describe('Search Operations', () => {
+    it('should perform search with query', async () => {
+      const mockResults: SearchResult[] = [
+        {
+          noteId: 'note1',
+          title: 'Test Note',
+          snippet: 'Test content',
+          matchCount: 1,
+          folderPath: 'Test Folder',
+          lastModified: new Date(),
+          highlights: []
+        }
+      ];
+      
+      (searchEngine.search as any).mockResolvedValue(mockResults);
+      
+      await useSearchStore.getState().search('test query');
+      
+      const state = useSearchStore.getState();
+      expect(state.query).toBe('test query');
+      expect(state.results).toEqual(mockResults);
+      expect(state.isSearching).toBe(false);
+      expect(state.error).toBeNull();
+      expect(searchEngine.search).toHaveBeenCalledWith({
+        query: 'test query',
+        filters: {},
+        fuzzy: true,
+        maxResults: 50
+      });
+    });
+
     it('should handle empty query', async () => {
-      const store = useSearchStore.getState();
-      await store.search('');
+      await useSearchStore.getState().search('');
       
       const state = useSearchStore.getState();
       expect(state.query).toBe('');
       expect(state.results).toEqual([]);
-      expect(state.error).toBeNull();
+      expect(searchEngine.search).not.toHaveBeenCalled();
     });
 
     it('should handle whitespace-only query', async () => {
-      const store = useSearchStore.getState();
-      await store.search('   ');
+      await useSearchStore.getState().search('   ');
       
       const state = useSearchStore.getState();
       expect(state.query).toBe('');
       expect(state.results).toEqual([]);
+      expect(searchEngine.search).not.toHaveBeenCalled();
     });
 
-    it('should set query and searching state', async () => {
-      const store = useSearchStore.getState();
+    it('should set loading state during search', async () => {
+      let resolveSearch: (value: SearchResult[]) => void;
+      const searchPromise = new Promise<SearchResult[]>((resolve) => {
+        resolveSearch = resolve;
+      });
       
-      // Start search and immediately check state (search is synchronous in current implementation)
-      await store.search('test query');
+      (searchEngine.search as any).mockReturnValue(searchPromise);
+      
+      const searchPromiseResult = useSearchStore.getState().search('test');
+      
+      // Check loading state
+      expect(useSearchStore.getState().isSearching).toBe(true);
+      
+      // Resolve the search
+      resolveSearch!([]);
+      await searchPromiseResult;
       
       // Check final state
-      const state = useSearchStore.getState();
-      expect(state.query).toBe('test query');
-      expect(state.isSearching).toBe(false); // Should be false after completion
-      expect(state.error).toBeNull();
-      expect(state.results).toEqual([]); // Empty results since SearchEngine is not implemented
+      expect(useSearchStore.getState().isSearching).toBe(false);
     });
 
-    it('should add query to recent queries', async () => {
-      const store = useSearchStore.getState();
+    it('should handle search errors', async () => {
+      const error = new Error('Search failed');
+      (searchEngine.search as any).mockRejectedValue(error);
       
-      await store.search('first query');
-      await store.search('second query');
-      await store.search('first query'); // Duplicate should move to top
-      
-      const state = useSearchStore.getState();
-      expect(state.recentQueries).toEqual(['first query', 'second query']);
-    });
-
-    it('should limit recent queries', async () => {
-      const store = useSearchStore.getState();
-      
-      // Add more than the maximum number of queries
-      for (let i = 1; i <= 12; i++) {
-        await store.search(`query ${i}`);
-      }
+      await useSearchStore.getState().search('test query');
       
       const state = useSearchStore.getState();
-      expect(state.recentQueries).toHaveLength(10); // Should be limited to MAX_RECENT_QUERIES
-      expect(state.recentQueries[0]).toBe('query 12'); // Most recent first
+      expect(state.error).toBe('Search failed');
+      expect(state.isSearching).toBe(false);
+      expect(state.results).toEqual([]);
     });
 
     it('should clear search', () => {
+      // Set some state first
       useSearchStore.setState({
-        query: 'test query',
-        results: [
-          {
-            noteId: '1',
-            title: 'Test Note',
-            snippet: 'Test content',
-            matchCount: 1,
-            folderPath: 'folder1',
-            lastModified: new Date(),
-            highlights: []
-          }
-        ],
-        isSearching: true,
-        error: 'Test error'
+        query: 'test',
+        results: [{ noteId: 'note1' } as SearchResult],
+        error: 'Some error',
+        isSearching: true
       });
       
-      const store = useSearchStore.getState();
-      store.clearSearch();
+      useSearchStore.getState().clearSearch();
       
       const state = useSearchStore.getState();
       expect(state.query).toBe('');
       expect(state.results).toEqual([]);
-      expect(state.isSearching).toBe(false);
       expect(state.error).toBeNull();
+      expect(state.isSearching).toBe(false);
     });
   });
 
-  describe('filters management', () => {
+  describe('Filter Management', () => {
     it('should set filters', () => {
-      const store = useSearchStore.getState();
-      const filters: Partial<SearchFilters> = {
-        folderId: 'folder1',
-        tags: ['tag1', 'tag2']
-      };
+      const filters = { folderId: 'folder1' };
       
-      store.setFilters(filters);
+      useSearchStore.getState().setFilters(filters);
       
       const state = useSearchStore.getState();
       expect(state.filters).toEqual(filters);
     });
 
     it('should merge filters', () => {
-      useSearchStore.setState({
-        filters: { folderId: 'folder1' }
-      });
+      useSearchStore.setState({ filters: { folderId: 'folder1' } });
       
-      const store = useSearchStore.getState();
-      store.setFilters({ tags: ['tag1'] });
+      useSearchStore.getState().setFilters({ 
+        dateRange: { 
+          start: new Date('2024-01-01'), 
+          end: new Date('2024-01-31') 
+        } 
+      });
       
       const state = useSearchStore.getState();
-      expect(state.filters).toEqual({
-        folderId: 'folder1',
-        tags: ['tag1']
-      });
+      expect(state.filters.folderId).toBe('folder1');
+      expect(state.filters.dateRange).toBeDefined();
     });
 
     it('should clear filters', () => {
-      useSearchStore.setState({
-        filters: {
-          folderId: 'folder1',
-          tags: ['tag1'],
-          dateRange: {
-            start: new Date('2024-01-01'),
-            end: new Date('2024-01-31')
-          }
-        }
+      useSearchStore.setState({ 
+        filters: { 
+          folderId: 'folder1', 
+          tags: ['tag1'] 
+        } 
       });
       
-      const store = useSearchStore.getState();
-      store.clearFilters();
+      useSearchStore.getState().clearFilters();
       
       const state = useSearchStore.getState();
       expect(state.filters).toEqual({});
     });
 
-    it('should detect active filters', () => {
-      const store = useSearchStore.getState();
+    it('should re-run search when filters change', async () => {
+      const mockResults: SearchResult[] = [];
+      (searchEngine.search as any).mockResolvedValue(mockResults);
       
-      // No filters
-      expect(store.hasActiveFilters()).toBe(false);
+      // Set initial query
+      useSearchStore.setState({ query: 'test query' });
       
-      // With folder filter
-      useSearchStore.setState({
-        filters: { folderId: 'folder1' }
+      // Change filters
+      useSearchStore.getState().setFilters({ folderId: 'folder1' });
+      
+      expect(searchEngine.search).toHaveBeenCalledWith({
+        query: 'test query',
+        filters: { folderId: 'folder1' },
+        fuzzy: true,
+        maxResults: 50
       });
-      expect(store.hasActiveFilters()).toBe(true);
+    });
+
+    it('should identify active filters', () => {
+      const { hasActiveFilters } = useSearchStore.getState();
       
-      // With date range filter
-      useSearchStore.setState({
-        filters: {
-          dateRange: {
-            start: new Date('2024-01-01'),
-            end: new Date('2024-01-31')
-          }
-        }
-      });
-      expect(store.hasActiveFilters()).toBe(true);
+      expect(hasActiveFilters()).toBe(false);
       
-      // With tags filter
-      useSearchStore.setState({
-        filters: { tags: ['tag1'] }
+      useSearchStore.setState({ filters: { folderId: 'folder1' } });
+      expect(hasActiveFilters()).toBe(true);
+      
+      useSearchStore.setState({ filters: { tags: ['tag1'] } });
+      expect(hasActiveFilters()).toBe(true);
+      
+      useSearchStore.setState({ 
+        filters: { 
+          dateRange: { 
+            start: new Date(), 
+            end: new Date() 
+          } 
+        } 
       });
-      expect(store.hasActiveFilters()).toBe(true);
+      expect(hasActiveFilters()).toBe(true);
     });
   });
 
-  describe('recent queries management', () => {
-    it('should add recent query', () => {
-      const store = useSearchStore.getState();
-      
-      store.addRecentQuery('test query');
+  describe('Recent Queries', () => {
+    it('should add recent queries', () => {
+      useSearchStore.getState().addRecentQuery('query1');
+      useSearchStore.getState().addRecentQuery('query2');
       
       const state = useSearchStore.getState();
-      expect(state.recentQueries).toEqual(['test query']);
+      expect(state.recentQueries).toEqual(['query2', 'query1']);
     });
 
-    it('should ignore empty queries', () => {
-      const store = useSearchStore.getState();
-      
-      store.addRecentQuery('');
-      store.addRecentQuery('   ');
+    it('should avoid duplicate recent queries', () => {
+      useSearchStore.getState().addRecentQuery('query1');
+      useSearchStore.getState().addRecentQuery('query2');
+      useSearchStore.getState().addRecentQuery('query1'); // Duplicate
       
       const state = useSearchStore.getState();
-      expect(state.recentQueries).toEqual([]);
+      expect(state.recentQueries).toEqual(['query1', 'query2']);
     });
 
-    it('should move duplicate query to top', () => {
-      useSearchStore.setState({
-        recentQueries: ['query1', 'query2', 'query3']
-      });
-      
-      const store = useSearchStore.getState();
-      store.addRecentQuery('query2');
+    it('should limit recent queries count', () => {
+      // Add more than the limit (10)
+      for (let i = 0; i < 15; i++) {
+        useSearchStore.getState().addRecentQuery(`query${i}`);
+      }
       
       const state = useSearchStore.getState();
-      expect(state.recentQueries).toEqual(['query2', 'query1', 'query3']);
+      expect(state.recentQueries).toHaveLength(10);
+      expect(state.recentQueries[0]).toBe('query14'); // Most recent first
     });
 
     it('should clear recent queries', () => {
-      useSearchStore.setState({
-        recentQueries: ['query1', 'query2', 'query3']
-      });
+      useSearchStore.getState().addRecentQuery('query1');
+      useSearchStore.getState().addRecentQuery('query2');
       
-      const store = useSearchStore.getState();
-      store.clearRecentQueries();
+      useSearchStore.getState().clearRecentQueries();
+      
+      const state = useSearchStore.getState();
+      expect(state.recentQueries).toEqual([]);
+    });
+
+    it('should ignore empty queries', () => {
+      useSearchStore.getState().addRecentQuery('');
+      useSearchStore.getState().addRecentQuery('   ');
       
       const state = useSearchStore.getState();
       expect(state.recentQueries).toEqual([]);
     });
   });
 
-  describe('recent notes management', () => {
+  describe('Recent Notes', () => {
     it('should update recent notes', () => {
-      const store = useSearchStore.getState();
       const noteIds = ['note1', 'note2', 'note3'];
       
-      store.updateRecentNotes(noteIds);
+      useSearchStore.getState().updateRecentNotes(noteIds);
       
       const state = useSearchStore.getState();
       expect(state.recentNotes).toEqual(noteIds);
     });
 
-    it('should limit recent notes', () => {
-      const store = useSearchStore.getState();
-      const noteIds = Array.from({ length: 25 }, (_, i) => `note${i + 1}`);
+    it('should limit recent notes count', () => {
+      const noteIds = Array.from({ length: 25 }, (_, i) => `note${i}`);
       
-      store.updateRecentNotes(noteIds);
+      useSearchStore.getState().updateRecentNotes(noteIds);
       
       const state = useSearchStore.getState();
-      expect(state.recentNotes).toHaveLength(20); // Should be limited to MAX_RECENT_NOTES
-      expect(state.recentNotes).toEqual(noteIds.slice(0, 20));
+      expect(state.recentNotes).toHaveLength(20);
     });
   });
 
-  describe('error handling', () => {
-    it('should set and clear error', () => {
-      const store = useSearchStore.getState();
+  describe('Error Handling', () => {
+    it('should set error', () => {
+      useSearchStore.getState().setError('Test error');
       
-      store.setError('Test error');
-      expect(useSearchStore.getState().error).toBe('Test error');
+      const state = useSearchStore.getState();
+      expect(state.error).toBe('Test error');
+    });
+
+    it('should clear error', () => {
+      useSearchStore.setState({ error: 'Test error' });
       
-      store.clearError();
-      expect(useSearchStore.getState().error).toBeNull();
+      useSearchStore.getState().clearError();
+      
+      const state = useSearchStore.getState();
+      expect(state.error).toBeNull();
     });
   });
 
-  describe('computed getters', () => {
+  describe('Computed Properties', () => {
     it('should check if has results', () => {
-      const store = useSearchStore.getState();
+      const { hasResults } = useSearchStore.getState();
       
-      expect(store.hasResults()).toBe(false);
+      expect(hasResults()).toBe(false);
       
-      useSearchStore.setState({
-        results: [
-          {
-            noteId: '1',
-            title: 'Test Note',
-            snippet: 'Test content',
-            matchCount: 1,
-            folderPath: 'folder1',
-            lastModified: new Date(),
-            highlights: []
-          }
-        ]
+      useSearchStore.setState({ 
+        results: [{ noteId: 'note1' } as SearchResult] 
       });
       
-      expect(store.hasResults()).toBe(true);
+      expect(hasResults()).toBe(true);
     });
 
-    it('should get filtered results without filters', () => {
+    it('should get filtered results without active filters', () => {
       const mockResults: SearchResult[] = [
-        {
-          noteId: '1',
-          title: 'Test Note 1',
-          snippet: 'Test content 1',
-          matchCount: 1,
-          folderPath: 'folder1',
-          lastModified: new Date('2024-01-01'),
-          highlights: []
-        },
-        {
-          noteId: '2',
-          title: 'Test Note 2',
-          snippet: 'Test content 2',
-          matchCount: 1,
-          folderPath: 'folder2',
-          lastModified: new Date('2024-01-02'),
-          highlights: []
-        }
+        { noteId: 'note1', folderPath: 'folder1', lastModified: new Date() } as SearchResult,
+        { noteId: 'note2', folderPath: 'folder2', lastModified: new Date() } as SearchResult
       ];
-
+      
       useSearchStore.setState({ results: mockResults });
       
-      const store = useSearchStore.getState();
-      const filteredResults = store.getFilteredResults();
-      
-      expect(filteredResults).toEqual(mockResults);
+      const { getFilteredResults } = useSearchStore.getState();
+      expect(getFilteredResults()).toEqual(mockResults);
     });
 
-    it('should get filtered results with folder filter', () => {
+    it('should filter results by folder', () => {
       const mockResults: SearchResult[] = [
-        {
-          noteId: '1',
-          title: 'Test Note 1',
-          snippet: 'Test content 1',
-          matchCount: 1,
-          folderPath: 'folder1',
-          lastModified: new Date('2024-01-01'),
-          highlights: []
-        },
-        {
-          noteId: '2',
-          title: 'Test Note 2',
-          snippet: 'Test content 2',
-          matchCount: 1,
-          folderPath: 'folder2',
-          lastModified: new Date('2024-01-02'),
-          highlights: []
-        }
+        { noteId: 'note1', folderPath: 'folder1 > subfolder', lastModified: new Date() } as SearchResult,
+        { noteId: 'note2', folderPath: 'folder2', lastModified: new Date() } as SearchResult
       ];
-
-      useSearchStore.setState({
+      
+      useSearchStore.setState({ 
         results: mockResults,
         filters: { folderId: 'folder1' }
       });
       
-      const store = useSearchStore.getState();
-      const filteredResults = store.getFilteredResults();
+      const { getFilteredResults } = useSearchStore.getState();
+      const filtered = getFilteredResults();
       
-      expect(filteredResults).toHaveLength(1);
-      expect(filteredResults[0].noteId).toBe('1');
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0].noteId).toBe('note1');
     });
 
-    it('should get filtered results with date range filter', () => {
+    it('should filter results by date range', () => {
+      const oldDate = new Date('2024-01-01');
+      const newDate = new Date('2024-01-15');
+      
       const mockResults: SearchResult[] = [
-        {
-          noteId: '1',
-          title: 'Test Note 1',
-          snippet: 'Test content 1',
-          matchCount: 1,
-          folderPath: 'folder1',
-          lastModified: new Date('2024-01-15'),
-          highlights: []
-        },
-        {
-          noteId: '2',
-          title: 'Test Note 2',
-          snippet: 'Test content 2',
-          matchCount: 1,
-          folderPath: 'folder2',
-          lastModified: new Date('2024-02-15'),
-          highlights: []
-        }
+        { noteId: 'note1', lastModified: oldDate } as SearchResult,
+        { noteId: 'note2', lastModified: newDate } as SearchResult
       ];
-
-      useSearchStore.setState({
+      
+      useSearchStore.setState({ 
         results: mockResults,
-        filters: {
-          dateRange: {
-            start: new Date('2024-01-01'),
-            end: new Date('2024-01-31')
-          }
+        filters: { 
+          dateRange: { 
+            start: new Date('2024-01-10'), 
+            end: new Date('2024-01-20') 
+          } 
         }
       });
       
-      const store = useSearchStore.getState();
-      const filteredResults = store.getFilteredResults();
+      const { getFilteredResults } = useSearchStore.getState();
+      const filtered = getFilteredResults();
       
-      expect(filteredResults).toHaveLength(1);
-      expect(filteredResults[0].noteId).toBe('1');
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0].noteId).toBe('note2');
+    });
+  });
+
+  describe('Search Engine Integration', () => {
+    it('should initialize search engine', async () => {
+      const mockNotes = [{ id: 'note1' }];
+      const mockFolders = [{ id: 'folder1' }];
+      const mockRecentNotes = [{ id: 'note1' }];
+      
+      (searchEngine.getRecentNotes as any).mockReturnValue(mockRecentNotes);
+      
+      await useSearchStore.getState().initializeSearchEngine();
+      
+      expect(searchEngine.initialize).toHaveBeenCalled();
+      expect(searchEngine.getRecentNotes).toHaveBeenCalledWith(20);
+      
+      const state = useSearchStore.getState();
+      expect(state.recentNotes).toEqual(['note1']);
+    });
+
+    it('should handle initialization errors', async () => {
+      const error = new Error('Initialization failed');
+      (searchEngine.initialize as any).mockRejectedValue(error);
+      
+      await useSearchStore.getState().initializeSearchEngine();
+      
+      const state = useSearchStore.getState();
+      expect(state.error).toBe('Initialization failed');
+    });
+
+    it('should index individual notes', async () => {
+      const mockNote = { id: 'note1', title: 'Test' };
+      
+      // Mock the note store to return the note
+      const mockNoteStore = {
+        getNote: vi.fn().mockReturnValue(mockNote)
+      };
+      
+      const { useNoteStore } = await import('../noteStore');
+      vi.mocked(useNoteStore.getState).mockReturnValue(mockNoteStore as any);
+      
+      await useSearchStore.getState().indexNote('note1');
+      
+      expect(mockNoteStore.getNote).toHaveBeenCalledWith('note1');
+      expect(searchEngine.indexNote).toHaveBeenCalledWith(mockNote);
+    });
+
+    it('should remove notes from index', () => {
+      useSearchStore.getState().removeNoteFromIndex('note1');
+      
+      expect(searchEngine.removeFromIndex).toHaveBeenCalledWith('note1');
+    });
+
+    it('should update search index', async () => {
+      // Mock the stores to return proper data
+      const { useNoteStore } = await import('../noteStore');
+      const { useFolderStore } = await import('../folderStore');
+      
+      vi.mocked(useNoteStore.getState).mockReturnValue({
+        notes: { note1: { id: 'note1', title: 'Test' } }
+      } as any);
+      
+      vi.mocked(useFolderStore.getState).mockReturnValue({
+        folders: { folder1: { id: 'folder1', name: 'Test Folder' } }
+      } as any);
+      
+      await useSearchStore.getState().updateSearchIndex();
+      
+      expect(searchEngine.initialize).toHaveBeenCalled();
     });
   });
 });

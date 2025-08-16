@@ -32,4 +32,4 @@ export type UpdateNoteInput = Partial<Pick<Note, 'title' | 'content' | 'folderId
 
 // Utility types for folder operations
 export type CreateFolderInput = Omit<Folder, 'id' | 'children' | 'notes' | 'createdAt' | 'updatedAt' | 'isExpanded'>;
-export type UpdateFolderInput = Partial<Pick<Folder, 'name' | 'parentId'>>;
+export type UpdateFolderInput = Partial<Pick<Folder, 'name' | 'parentId' | 'isExpanded'>>;

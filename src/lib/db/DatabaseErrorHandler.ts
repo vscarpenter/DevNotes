@@ -86,17 +86,16 @@ export class DatabaseErrorHandler {
 
   /**
    * Show error notification to user
-   * This would integrate with the application's notification system
+   * Integrates with the application's toast notification system
    */
   private static showErrorNotification(message: string): void {
-    // For now, use console.error and alert
-    // In a real app, this would integrate with a toast/notification system
     console.error('Database Error:', message);
     
-    // Only show alert for critical errors
-    if (message.includes('quota exceeded') || message.includes('version conflict')) {
-      alert(message);
-    }
+    // Dispatch custom event for toast system to handle
+    const event = new CustomEvent('database-error', {
+      detail: { message, timestamp: new Date().toISOString() }
+    });
+    window.dispatchEvent(event);
   }
 
   /**

@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import { useNoteStore } from '../noteStore';
 import { databaseService } from '../../lib/db/DatabaseService';
-import { Note, CreateNoteInput } from '../../types/note';
+import { Note } from '../../types/note';
 
 // Mock the database service
 vi.mock('../../lib/db/DatabaseService', () => ({
@@ -18,12 +18,7 @@ vi.mock('../../lib/db/DatabaseService', () => ({
   }
 }));
 
-const mockDatabaseService = databaseService as {
-  getAllNotes: Mock;
-  createNote: Mock;
-  updateNote: Mock;
-  deleteNote: Mock;
-};
+const mockDatabaseService = databaseService as any;
 
 describe('noteStore', () => {
   beforeEach(() => {

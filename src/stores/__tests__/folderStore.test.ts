@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import { useFolderStore } from '../folderStore';
 import { databaseService } from '../../lib/db/DatabaseService';
-import { Folder, CreateFolderInput } from '../../types/note';
+import { Folder } from '../../types/note';
 
 // Mock the database service
 vi.mock('../../lib/db/DatabaseService', () => ({
@@ -18,12 +18,7 @@ vi.mock('../../lib/db/DatabaseService', () => ({
   }
 }));
 
-const mockDatabaseService = databaseService as {
-  getAllFolders: Mock;
-  createFolder: Mock;
-  updateFolder: Mock;
-  deleteFolder: Mock;
-};
+const mockDatabaseService = databaseService as any;
 
 describe('folderStore', () => {
   beforeEach(() => {

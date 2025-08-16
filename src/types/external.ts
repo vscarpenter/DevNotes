@@ -3,114 +3,48 @@
  * Requirements: 4.1, 4.6, 4.7
  */
 
-// CodeMirror 6 types
-declare module '@codemirror/state' {
-  export interface EditorState {
-    doc: Text;
-    selection: EditorSelection;
-  }
-  
-  export interface EditorSelection {
-    main: SelectionRange;
-    ranges: readonly SelectionRange[];
-  }
-  
-  export interface SelectionRange {
-    from: number;
-    to: number;
-    anchor: number;
-    head: number;
-  }
+// Re-export CodeMirror types
+export type { EditorState, Transaction, ChangeSet } from '@codemirror/state';
+export type { EditorView, ViewUpdate } from '@codemirror/view';
+
+// Additional type definitions for libraries that may not have complete types
+export interface KatexOptions {
+  displayMode?: boolean;
+  throwOnError?: boolean;
+  errorColor?: string;
+  macros?: Record<string, string>;
 }
 
-declare module '@codemirror/view' {
-  export interface EditorView {
-    state: EditorState;
-    dispatch: (transaction: Transaction) => void;
-    dom: HTMLElement;
-  }
-  
-  export interface ViewUpdate {
-    state: EditorState;
-    changes: ChangeSet;
-    docChanged: boolean;
-  }
+export interface MermaidConfig {
+  theme?: 'default' | 'dark' | 'forest' | 'neutral';
+  startOnLoad?: boolean;
+  securityLevel?: 'strict' | 'loose' | 'antiscript' | 'sandbox';
 }
 
-// Dexie types extension
-declare module 'dexie' {
-  export interface Table<T = any, TKey = any> {
-    bulkAdd(items: T[]): Promise<TKey[]>;
-    bulkPut(items: T[]): Promise<TKey[]>;
-    bulkDelete(keys: TKey[]): Promise<void>;
-  }
+export interface PrismGrammar {
+  [key: string]: any;
 }
 
-// KaTeX types
-declare module 'katex' {
-  export interface KatexOptions {
-    displayMode?: boolean;
-    throwOnError?: boolean;
-    errorColor?: string;
-    macros?: Record<string, string>;
-  }
-  
-  export function render(tex: string, element: HTMLElement, options?: KatexOptions): void;
-  export function renderToString(tex: string, options?: KatexOptions): string;
+export interface UnifiedProcessor {
+  use(plugin: any, options?: any): UnifiedProcessor;
+  process(value: string): Promise<UnifiedVFile>;
+  processSync(value: string): UnifiedVFile;
 }
 
-// Mermaid types
-declare module 'mermaid' {
-  export interface MermaidConfig {
-    theme?: 'default' | 'dark' | 'forest' | 'neutral';
-    startOnLoad?: boolean;
-    securityLevel?: 'strict' | 'loose' | 'antiscript' | 'sandbox';
-  }
-  
-  export function initialize(config: MermaidConfig): void;
-  export function render(id: string, definition: string): Promise<string>;
-}
-
-// Prism.js types
-declare module 'prismjs' {
-  export interface Grammar {
-    [key: string]: any;
-  }
-  
-  export interface LanguageDefinition {
-    [key: string]: any;
-  }
-  
-  export const languages: Record<string, Grammar>;
-  export function highlight(text: string, grammar: Grammar, language: string): string;
-  export function highlightAll(): void;
-}
-
-// Unified.js ecosystem types
-declare module 'unified' {
-  export interface Processor {
-    use(plugin: any, options?: any): Processor;
-    process(value: string): Promise<VFile>;
-    processSync(value: string): VFile;
-  }
-  
-  export interface VFile {
-    contents: string;
-    data: Record<string, any>;
-    messages: any[];
-  }
+export interface UnifiedVFile {
+  contents: string;
+  data: Record<string, any>;
+  messages: any[];
 }
 
 // React DnD types (if used for drag and drop)
-declare module 'react-dnd' {
-  export interface DragSourceMonitor {
-    isDragging(): boolean;
-    getDropResult(): any;
-  }
-  
-  export interface DropTargetMonitor {
-    isOver(): boolean;
-    canDrop(): boolean;
-    getItem(): any;
-  }
+export interface DragSourceMonitor {
+  isDragging(): boolean;
+  getDropResult(): any;
+}
+
+export interface DropTargetMonitor {
+  isOver(): boolean;
+  canDrop(): boolean;
+  getItem(): any;
 }

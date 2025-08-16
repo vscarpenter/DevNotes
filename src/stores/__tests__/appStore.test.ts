@@ -36,10 +36,10 @@ vi.mock('../searchStore', () => ({
   }
 }));
 
-const mockNoteStore = useNoteStore as { getState: Mock };
-const mockFolderStore = useFolderStore as { getState: Mock };
-const mockUIStore = useUIStore as { getState: Mock };
-const mockSearchStore = useSearchStore as { getState: Mock };
+const mockNoteStore = useNoteStore as any;
+const mockFolderStore = useFolderStore as any;
+const mockUIStore = useUIStore as any;
+const mockSearchStore = useSearchStore as any;
 
 describe('appStore', () => {
   let mockNoteActions: any;

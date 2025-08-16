@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useAppStoreWithInit } from '../appStore';
+// import { useAppStoreWithInit } from '../appStore';
 import { useNoteStore } from '../noteStore';
 import { useFolderStore } from '../folderStore';
 import { useUIStore } from '../uiStore';

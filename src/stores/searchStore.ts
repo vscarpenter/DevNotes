@@ -7,6 +7,9 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { SearchResult, SearchFilters, SearchOptions } from '../types/search';
+import { searchEngine } from '../lib/search/SearchEngine';
+import { useNoteStore } from './noteStore';
+import { useFolderStore } from './folderStore';
 
 interface SearchState {
   // State
@@ -28,6 +31,10 @@ interface SearchState {
   updateRecentNotes: (noteIds: string[]) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
+  initializeSearchEngine: () => Promise<void>;
+  indexNote: (noteId: string) => Promise<void>;
+  removeNoteFromIndex: (noteId: string) => void;
+  updateSearchIndex: () => Promise<void>;
   
   // Computed getters
   hasResults: () => boolean;
@@ -64,9 +71,17 @@ export const useSearchStore = create<SearchState>()(
         // Add to recent queries
         get().addRecentQuery(trimmedQuery);
 
-        // TODO: Implement actual search when SearchEngine is available
-        // For now, return empty results
-        const searchResults: SearchResult[] = [];
+        // Prepare search options
+        const searchOptions: SearchOptions = {
+          query: trimmedQuery,
+          filters: get().filters,
+          fuzzy: true,
+          maxResults: 50,
+          ...options
+        };
+
+        // Perform search using SearchEngine
+        const searchResults = await searchEngine.search(searchOptions);
 
         set({ 
           results: searchResults, 
@@ -187,6 +202,49 @@ export const useSearchStore = create<SearchState>()(
 
         return true;
       });
+    },
+
+    // Search engine management
+    initializeSearchEngine: async () => {
+      try {
+        const notes = Object.values(useNoteStore.getState().notes);
+        const folders = Object.values(useFolderStore.getState().folders);
+        
+        await searchEngine.initialize(notes, folders);
+        
+        // Update recent notes
+        const recentNotes = searchEngine.getRecentNotes(20);
+        get().updateRecentNotes(recentNotes.map(note => note.id));
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to initialize search';
+        set({ error: errorMessage });
+      }
+    },
+
+    indexNote: async (noteId: string) => {
+      try {
+        const note = useNoteStore.getState().getNote(noteId);
+        if (note) {
+          await searchEngine.indexNote(note);
+        }
+      } catch (error) {
+        console.error('Failed to index note:', error);
+      }
+    },
+
+    removeNoteFromIndex: (noteId: string) => {
+      searchEngine.removeFromIndex(noteId);
+    },
+
+    updateSearchIndex: async () => {
+      try {
+        const notes = Object.values(useNoteStore.getState().notes);
+        const folders = Object.values(useFolderStore.getState().folders);
+        
+        await searchEngine.initialize(notes, folders);
+      } catch (error) {
+        console.error('Failed to update search index:', error);
+      }
     }
   }))
 );

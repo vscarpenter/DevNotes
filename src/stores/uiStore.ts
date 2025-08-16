@@ -26,6 +26,8 @@ interface UIState {
   showLineNumbers: boolean;
   wordWrap: boolean;
   fontSize: number;
+  cursorPosition: { line: number; column: number };
+  selectionInfo: { hasSelection: boolean; selectedLength: number };
   
   // Application state
   isLoading: boolean;
@@ -54,6 +56,8 @@ interface UIState {
   toggleLineNumbers: () => void;
   toggleWordWrap: () => void;
   setFontSize: (size: number) => void;
+  setCursorPosition: (position: { line: number; column: number }) => void;
+  setSelectionInfo: (info: { hasSelection: boolean; selectedLength: number }) => void;
   
   setLoading: (loading: boolean) => void;
   setSaveStatus: (status: SaveStatus) => void;
@@ -91,6 +95,8 @@ export const useUIStore = create<UIState>()(
       showLineNumbers: true,
       wordWrap: true,
       fontSize: 14,
+      cursorPosition: { line: 1, column: 1 },
+      selectionInfo: { hasSelection: false, selectedLength: 0 },
       
       isLoading: false,
       saveStatus: 'saved',
@@ -176,6 +182,14 @@ export const useUIStore = create<UIState>()(
       setFontSize: (size: number) => {
         const clampedSize = Math.max(10, Math.min(24, size));
         set({ fontSize: clampedSize });
+      },
+
+      setCursorPosition: (position: { line: number; column: number }) => {
+        set({ cursorPosition: position });
+      },
+
+      setSelectionInfo: (info: { hasSelection: boolean; selectedLength: number }) => {
+        set({ selectionInfo: info });
       },
 
       // Application state actions

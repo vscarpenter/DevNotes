@@ -4,7 +4,7 @@
  * Requirements: 7.1, 7.4, 7.6
  */
 
-import Dexie, { Table } from 'dexie';
+import Dexie, { type Table } from 'dexie';
 import { 
   Note, 
   Folder, 
@@ -36,17 +36,17 @@ export class DatabaseService extends Dexie {
     });
 
     // Add hooks for automatic timestamp updates
-    this.notes.hook('creating', (primKey, obj, trans) => {
+    this.notes.hook('creating', (_primKey, obj: any, _trans) => {
       const now = new Date();
       obj.createdAt = now;
       obj.updatedAt = now;
     });
 
-    this.notes.hook('updating', (modifications, primKey, obj, trans) => {
+    this.notes.hook('updating', (modifications: any, _primKey, _obj, _trans) => {
       modifications.updatedAt = new Date();
     });
 
-    this.folders.hook('creating', (primKey, obj, trans) => {
+    this.folders.hook('creating', (_primKey, obj: any, _trans) => {
       const now = new Date();
       obj.createdAt = now;
       obj.updatedAt = now;
@@ -55,7 +55,7 @@ export class DatabaseService extends Dexie {
       obj.isExpanded = obj.isExpanded ?? false;
     });
 
-    this.folders.hook('updating', (modifications, primKey, obj, trans) => {
+    this.folders.hook('updating', (modifications: any, _primKey, _obj, _trans) => {
       modifications.updatedAt = new Date();
     });
   }
@@ -162,9 +162,10 @@ export class DatabaseService extends Dexie {
       const notes = await this.notes
         .where('folderId')
         .equals(folderId)
-        .orderBy('updatedAt')
-        .reverse()
         .toArray();
+      
+      // Sort by updatedAt in descending order
+      notes.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
       
       return { success: true, data: notes };
     } catch (error) {
@@ -174,10 +175,10 @@ export class DatabaseService extends Dexie {
 
   async getAllNotes(): Promise<DatabaseResult<Note[]>> {
     try {
-      const notes = await this.notes
-        .orderBy('updatedAt')
-        .reverse()
-        .toArray();
+      const notes = await this.notes.toArray();
+      
+      // Sort by updatedAt in descending order
+      notes.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
       
       return { success: true, data: notes };
     } catch (error) {
@@ -280,9 +281,10 @@ export class DatabaseService extends Dexie {
 
   async getAllFolders(): Promise<DatabaseResult<Folder[]>> {
     try {
-      const folders = await this.folders
-        .orderBy('name')
-        .toArray();
+      const folders = await this.folders.toArray();
+      
+      // Sort by name
+      folders.sort((a, b) => a.name.localeCompare(b.name));
       
       return { success: true, data: folders };
     } catch (error) {
@@ -294,9 +296,11 @@ export class DatabaseService extends Dexie {
     try {
       const folders = await this.folders
         .where('parentId')
-        .equals(null)
-        .orderBy('name')
+        .equals(null as any)
         .toArray();
+      
+      // Sort by name
+      folders.sort((a, b) => a.name.localeCompare(b.name));
       
       return { success: true, data: folders };
     } catch (error) {
@@ -309,8 +313,10 @@ export class DatabaseService extends Dexie {
       const folders = await this.folders
         .where('parentId')
         .equals(parentId)
-        .orderBy('name')
         .toArray();
+      
+      // Sort by name
+      folders.sort((a, b) => a.name.localeCompare(b.name));
       
       return { success: true, data: folders };
     } catch (error) {
@@ -465,16 +471,16 @@ export class DatabaseService extends Dexie {
     await this.folders.delete(folder.id);
   }
 
-  private calculateWordCount(content: string): number {
+  public calculateWordCount(content: string): number {
     return content.trim().split(/\s+/).filter(word => word.length > 0).length;
   }
 
-  private calculateReadingTime(wordCount: number): number {
+  public calculateReadingTime(wordCount: number): number {
     // Average reading speed: 200 words per minute
     return Math.ceil(wordCount / 200);
   }
 
-  private handleDatabaseError(operation: string, error: any): DatabaseResult<any> {
+  public handleDatabaseError(operation: string, error: any): DatabaseResult<any> {
     console.error(`Database operation failed: ${operation}`, error);
     
     let errorMessage = `Failed to ${operation}`;

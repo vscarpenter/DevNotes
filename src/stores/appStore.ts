@@ -84,8 +84,7 @@ export const useAppStore = create<AppStore>()(
 
     deleteNoteAndUpdateUI: async (noteId: string) => {
       try {
-        // Get the note before deletion to check if it's selected
-        const note = useNoteStore.getState().getNote(noteId);
+        // Check if the note is selected before deletion
         const isSelected = useNoteStore.getState().selectedNoteId === noteId;
         
         // Delete the note

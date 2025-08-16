@@ -10,7 +10,7 @@ import { useUIStore } from '../uiStore';
 const mockMatchMedia = vi.fn();
 
 // Mock window object for testing environment
-Object.defineProperty(global, 'window', {
+Object.defineProperty(globalThis, 'window', {
   value: {
     matchMedia: mockMatchMedia
   },
