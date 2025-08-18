@@ -8,6 +8,7 @@ import Dexie, { type Table } from 'dexie';
 import { 
   Note, 
   Folder, 
+  Tag,
   CreateNoteInput, 
   UpdateNoteInput, 
   CreateFolderInput, 
@@ -21,6 +22,7 @@ import {
 export class DatabaseService extends Dexie {
   notes!: Table<Note>;
   folders!: Table<Folder>;
+  tags!: Table<Tag>;
   settings!: Table<{ key: string; value: any }>;
   searchIndex!: Table<SearchIndex>;
 
@@ -31,6 +33,7 @@ export class DatabaseService extends Dexie {
     this.version(1).stores({
       notes: '++id, title, content, folderId, createdAt, updatedAt, [folderId+updatedAt]',
       folders: '++id, name, parentId, createdAt, updatedAt, [parentId+name]',
+      tags: '++id, name, color, createdAt, usageCount',
       settings: '++key, value',
       searchIndex: '++noteId, lastIndexed'
     });
@@ -57,6 +60,12 @@ export class DatabaseService extends Dexie {
 
     this.folders.hook('updating', (modifications: any, _primKey, _obj, _trans) => {
       modifications.updatedAt = new Date();
+    });
+
+    this.tags.hook('creating', (_primKey, obj: any, _trans) => {
+      const now = new Date();
+      obj.createdAt = now;
+      obj.usageCount = obj.usageCount || 0;
     });
   }
 
@@ -324,12 +333,136 @@ export class DatabaseService extends Dexie {
     }
   }
 
+  // Tag CRUD Operations
+  async createTag(tagInput: Omit<Tag, 'id' | 'createdAt'>): Promise<DatabaseResult<Tag>> {
+    try {
+      const tagId = await this.transaction('rw', this.tags, async () => {
+        const tag: Omit<Tag, 'id'> = {
+          ...tagInput,
+          createdAt: new Date()
+        };
+
+        const id = await this.tags.add(tag as Tag);
+        return id as string;
+      });
+
+      const createdTag = await this.tags.get(tagId);
+      return { success: true, data: createdTag };
+    } catch (error) {
+      return this.handleDatabaseError('createTag', error);
+    }
+  }
+
+  async getTagById(id: string): Promise<DatabaseResult<Tag>> {
+    try {
+      const tag = await this.tags.get(id);
+      return { success: true, data: tag };
+    } catch (error) {
+      return this.handleDatabaseError('getTagById', error);
+    }
+  }
+
+  async updateTag(id: string, updates: Partial<Pick<Tag, 'name' | 'color'>>): Promise<DatabaseResult<Tag>> {
+    try {
+      const updatedTag = await this.transaction('rw', this.tags, async () => {
+        const existingTag = await this.tags.get(id);
+        if (!existingTag) {
+          throw new Error(`Tag with id ${id} not found`);
+        }
+
+        await this.tags.update(id, updates);
+        return await this.tags.get(id);
+      });
+
+      return { success: true, data: updatedTag };
+    } catch (error) {
+      return this.handleDatabaseError('updateTag', error);
+    }
+  }
+
+  async deleteTag(id: string): Promise<DatabaseResult<boolean>> {
+    try {
+      await this.transaction('rw', this.tags, this.notes, async () => {
+        const tag = await this.tags.get(id);
+        if (!tag) {
+          throw new Error(`Tag with id ${id} not found`);
+        }
+
+        // Remove tag from all notes
+        const allNotes = await this.notes.toArray();
+        for (const note of allNotes) {
+          if (note.tags && note.tags.includes(id)) {
+            const updatedTags = note.tags.filter(tagId => tagId !== id);
+            await this.notes.update(note.id, { tags: updatedTags });
+          }
+        }
+
+        // Delete the tag
+        await this.tags.delete(id);
+      });
+
+      return { success: true, data: true };
+    } catch (error) {
+      return this.handleDatabaseError('deleteTag', error);
+    }
+  }
+
+  async getAllTags(): Promise<DatabaseResult<Tag[]>> {
+    try {
+      const tags = await this.tags.toArray();
+      
+      // Sort by name
+      tags.sort((a, b) => a.name.localeCompare(b.name));
+      
+      return { success: true, data: tags };
+    } catch (error) {
+      return this.handleDatabaseError('getAllTags', error);
+    }
+  }
+
+  async updateTagUsageCounts(): Promise<DatabaseResult<Tag[]>> {
+    try {
+      const updatedTags = await this.transaction('rw', this.tags, this.notes, async () => {
+        const allNotes = await this.notes.toArray();
+        const tagUsage = new Map<string, number>();
+
+        // Count tag usage
+        for (const note of allNotes) {
+          if (note.tags) {
+            for (const tagId of note.tags) {
+              tagUsage.set(tagId, (tagUsage.get(tagId) || 0) + 1);
+            }
+          }
+        }
+
+        // Update tag usage counts
+        const allTags = await this.tags.toArray();
+        const updatedTags: Tag[] = [];
+
+        for (const tag of allTags) {
+          const usageCount = tagUsage.get(tag.id) || 0;
+          if (tag.usageCount !== usageCount) {
+            await this.tags.update(tag.id, { usageCount });
+            updatedTags.push({ ...tag, usageCount });
+          }
+        }
+
+        return updatedTags;
+      });
+
+      return { success: true, data: updatedTags };
+    } catch (error) {
+      return this.handleDatabaseError('updateTagUsageCounts', error);
+    }
+  }
+
   // Bulk Operations
   async exportData(): Promise<DatabaseResult<ExportData>> {
     try {
-      const [notes, folders, settings] = await Promise.all([
+      const [notes, folders, tags, settings] = await Promise.all([
         this.notes.toArray(),
         this.folders.toArray(),
+        this.tags.toArray(),
         this.settings.toArray()
       ]);
 
@@ -343,10 +476,12 @@ export class DatabaseService extends Dexie {
         exportDate: new Date(),
         notes,
         folders,
+        tags,
         settings: settingsMap,
         metadata: {
           totalNotes: notes.length,
           totalFolders: folders.length,
+          totalTags: tags.length,
           exportFormat: 'json'
         }
       };
@@ -363,10 +498,11 @@ export class DatabaseService extends Dexie {
       let failed = 0;
       const errors: string[] = [];
 
-      await this.transaction('rw', this.notes, this.folders, this.settings, async () => {
+      await this.transaction('rw', this.notes, this.folders, this.tags, this.settings, async () => {
         // Clear existing data
         await this.notes.clear();
         await this.folders.clear();
+        await this.tags.clear();
         await this.settings.clear();
 
         // Import folders first (to maintain hierarchy)
@@ -377,6 +513,19 @@ export class DatabaseService extends Dexie {
           } catch (error) {
             failed++;
             errors.push(`Failed to import folder ${folder.name}: ${error}`);
+          }
+        }
+
+        // Import tags
+        if (data.tags) {
+          for (const tag of data.tags) {
+            try {
+              await this.tags.add(tag);
+              processed++;
+            } catch (error) {
+              failed++;
+              errors.push(`Failed to import tag ${tag.name}: ${error}`);
+            }
           }
         }
 

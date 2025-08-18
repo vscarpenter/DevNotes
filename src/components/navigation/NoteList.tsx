@@ -4,7 +4,8 @@
  * Requirements: 2.1, 9.6
  */
 
-import React, { useMemo, useState, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { FixedSizeList as List } from 'react-window';
 import { 
   FileText, 
@@ -15,7 +16,7 @@ import {
   Clock,
   Hash
 } from 'lucide-react';
-import { Note } from '../../types/note';
+import { Note, Folder } from '../../types/note';
 import { useNoteStore } from '../../stores/noteStore';
 import { useFolderStore } from '../../stores/folderStore';
 import { Button } from '../ui/button';
@@ -57,7 +58,7 @@ const NoteItem: React.FC<NoteItemProps> = ({
       .replace(/\n/g, ' ') // Replace newlines with spaces
       .trim();
     
-    return plainText.length > 80 ? `${plainText.slice(0, 80)}...` : plainText;
+    return plainText.length > 60 ? `${plainText.slice(0, 60)}...` : plainText;
   }, [note.content]);
 
   // Format date for display
@@ -77,7 +78,7 @@ const NoteItem: React.FC<NoteItemProps> = ({
   return (
     <div
       className={cn(
-        "flex items-start gap-3 p-3 border-b border-border cursor-pointer transition-colors hover:bg-accent/50",
+        "flex items-start gap-3 p-4 border-b border-border cursor-pointer transition-colors hover:bg-accent/50",
         isSelected && "bg-accent border-accent-foreground/20"
       )}
       onClick={() => onSelect(note.id)}
@@ -106,7 +107,7 @@ const NoteItem: React.FC<NoteItemProps> = ({
         
         {/* Preview text */}
         {previewText && (
-          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+          <p className="text-xs text-muted-foreground line-clamp-1 mb-2 overflow-hidden">
             {previewText}
           </p>
         )}
@@ -189,10 +190,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
-  return (
+  const menuContent = (
     <div
       ref={menuRef}
-      className="fixed z-50 bg-popover border border-border rounded-md shadow-lg py-1 min-w-32"
+      className="fixed z-[99999] bg-popover border border-border rounded-md shadow-lg py-1 min-w-32"
       style={{ left: position.x, top: position.y }}
     >
       <button
@@ -231,6 +232,110 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       </button>
     </div>
   );
+
+  return createPortal(menuContent, document.body);
+};
+
+// Move Note Modal component
+interface MoveNoteModalProps {
+  noteTitle: string;
+  currentFolderId: string;
+  onMove: (folderId: string) => void;
+  onClose: () => void;
+}
+
+const MoveNoteModal: React.FC<MoveNoteModalProps> = ({
+  noteTitle,
+  currentFolderId,
+  onMove,
+  onClose
+}) => {
+  const { folders } = useFolderStore();
+  const [selectedFolderId, setSelectedFolderId] = useState<string>(currentFolderId);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Handle click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose]);
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
+  const handleMove = () => {
+    onMove(selectedFolderId);
+  };
+
+  const folderList = Object.values(folders).filter(folder => folder.id !== currentFolderId);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[9998] flex items-center justify-center p-4">
+      <div 
+        ref={modalRef}
+        className="bg-background border border-border rounded-lg shadow-lg max-w-md w-full p-6"
+      >
+        <h2 className="text-lg font-semibold mb-4">Move Note</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Move "{noteTitle}" to a different folder:
+        </p>
+        
+        <div className="space-y-2 mb-6 max-h-60 overflow-y-auto">
+          {folderList.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">No other folders available</p>
+          ) : (
+            folderList.map(folder => (
+              <div
+                key={folder.id}
+                className={cn(
+                  "flex items-center gap-2 p-2 rounded cursor-pointer transition-colors",
+                  selectedFolderId === folder.id 
+                    ? "bg-accent text-accent-foreground" 
+                    : "hover:bg-accent/50"
+                )}
+                onClick={() => setSelectedFolderId(folder.id)}
+              >
+                <FolderOpen className="h-4 w-4" />
+                <span className="text-sm">{folder.name}</span>
+              </div>
+            ))
+          )}
+        </div>
+        
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleMove}
+            disabled={selectedFolderId === currentFolderId || folderList.length === 0}
+          >
+            Move Note
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // Main NoteList component
@@ -247,12 +352,18 @@ export const NoteList: React.FC<NoteListProps> = ({
     selectedNoteId, 
     selectNote, 
     duplicateNote, 
-    deleteNote 
+    deleteNote,
+    moveNote 
   } = useNoteStore();
   
   const [contextMenu, setContextMenu] = useState<{
     note: Note;
     position: { x: number; y: number };
+  } | null>(null);
+  
+  const [moveModal, setMoveModal] = useState<{
+    noteId: string;
+    noteTitle: string;
   } | null>(null);
 
   // Filter and sort notes
@@ -334,9 +445,25 @@ export const NoteList: React.FC<NoteListProps> = ({
   }, [deleteNote]);
 
   const handleMove = useCallback((noteId: string) => {
-    // TODO: Implement move functionality with folder selection modal
-    console.log('Move note:', noteId);
-  }, []);
+    const note = notes[noteId];
+    if (note) {
+      setMoveModal({
+        noteId,
+        noteTitle: note.title
+      });
+    }
+  }, [notes]);
+
+  const handleMoveConfirm = useCallback(async (targetFolderId: string) => {
+    if (!moveModal) return;
+    
+    try {
+      await moveNote(moveModal.noteId, targetFolderId);
+      setMoveModal(null);
+    } catch (error) {
+      console.error('Failed to move note:', error);
+    }
+  }, [moveNote, moveModal]);
 
   // Virtual list row renderer
   const Row = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
@@ -379,7 +506,7 @@ export const NoteList: React.FC<NoteListProps> = ({
       <List
         height={height}
         itemCount={filteredAndSortedNotes.length}
-        itemSize={80} // Approximate height per item
+        itemSize={100} // Increased height to prevent overlapping
         width="100%"
       >
         {Row}
@@ -394,6 +521,16 @@ export const NoteList: React.FC<NoteListProps> = ({
           onDuplicate={handleDuplicate}
           onDelete={handleDelete}
           onMove={handleMove}
+        />
+      )}
+      
+      {/* Move note modal */}
+      {moveModal && (
+        <MoveNoteModal
+          noteTitle={moveModal.noteTitle}
+          currentFolderId={notes[moveModal.noteId]?.folderId || ''}
+          onMove={handleMoveConfirm}
+          onClose={() => setMoveModal(null)}
         />
       )}
     </div>

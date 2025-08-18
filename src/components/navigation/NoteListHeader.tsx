@@ -64,7 +64,7 @@ export const NoteListHeader: React.FC<NoteListHeaderProps> = ({
           </Button>
           
           {/* Dropdown menu */}
-          <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg py-1 min-w-32 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+          <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg py-1 min-w-32 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[99999]">
             {sortOptions.map((option) => {
               const OptionIcon = option.icon;
               return (

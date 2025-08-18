@@ -26,6 +26,7 @@ import { cn } from '../../lib/utils';
 import { SearchResultItem } from './SearchResultItem';
 import { SearchFiltersPanel } from './SearchFiltersPanel';
 import { RecentNotesSection } from './RecentNotesSection';
+import { TooltipWrapper } from '../userGuide/withTooltip';
 
 export interface SearchInterfaceProps {
   className?: string;
@@ -248,42 +249,46 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({
       <form onSubmit={handleSubmit} className="relative">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            ref={inputRef}
-            type="text"
-            placeholder="Search notes..."
-            value={inputValue}
-            onChange={handleInputChange}
-            onFocus={handleInputFocus}
-            onBlur={handleInputBlur}
-            className="pl-10 pr-20"
-            aria-label="Search notes"
-            aria-expanded={hasResults() || showRecentQueries}
-            aria-haspopup="listbox"
-            role="combobox"
-            aria-activedescendant={
-              selectedResultIndex >= 0 
-                ? `search-result-${selectedResultIndex}` 
-                : undefined
-            }
-          />
+          <TooltipWrapper tooltipId="search-syntax">
+            <Input
+              ref={inputRef}
+              type="text"
+              placeholder="Search notes..."
+              value={inputValue}
+              onChange={handleInputChange}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
+              className="pl-10 pr-20"
+              aria-label="Search notes"
+              aria-expanded={hasResults() || showRecentQueries}
+              aria-haspopup="listbox"
+              role="combobox"
+              aria-activedescendant={
+                selectedResultIndex >= 0 
+                  ? `search-result-${selectedResultIndex}` 
+                  : undefined
+              }
+            />
+          </TooltipWrapper>
           
           {/* Right side buttons */}
           <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
             {/* Filters toggle */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "h-6 w-6",
-                hasActiveFilters() && "text-primary bg-primary/10"
-              )}
-              onClick={() => setShowFilters(!showFilters)}
-              title="Search filters"
-            >
-              <Filter className="h-3 w-3" />
-            </Button>
+            <TooltipWrapper tooltipId="search-filters">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-6 w-6",
+                  hasActiveFilters() && "text-primary bg-primary/10"
+                )}
+                onClick={() => setShowFilters(!showFilters)}
+                title="Search filters"
+              >
+                <Filter className="h-3 w-3" />
+              </Button>
+            </TooltipWrapper>
             
             {/* Clear button */}
             {(inputValue || query) && (

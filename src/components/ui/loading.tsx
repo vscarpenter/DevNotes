@@ -46,10 +46,10 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
     <div className={`relative ${className}`}>
       {children}
       {isLoading && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="flex flex-col items-center gap-3">
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-200">
+          <div className="flex flex-col items-center gap-3 animate-in slide-in-from-bottom-2 duration-300 delay-100">
             <LoadingSpinner size="lg" />
-            <p className="text-sm text-muted-foreground">{message}</p>
+            <p className="text-sm text-muted-foreground animate-in fade-in-0 duration-300 delay-200">{message}</p>
           </div>
         </div>
       )}
@@ -117,9 +117,11 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
       )}
       <div className="w-full bg-muted rounded-full h-2">
         <div
-          className="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
+          className="bg-primary h-2 rounded-full transition-all duration-500 ease-out relative overflow-hidden"
           style={{ width: `${clampedProgress}%` }}
-        />
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
+        </div>
       </div>
     </div>
   );

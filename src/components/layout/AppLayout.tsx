@@ -6,9 +6,11 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useUIStore } from '@/stores/uiStore';
+import { useUserGuideStore } from '@/stores/userGuideStore';
 import { cn } from '@/lib/utils';
 import { Sidebar } from './Sidebar';
 import { MainPanel } from './MainPanel';
+import { UserGuideModal } from '@/components/userGuide';
 
 interface AppLayoutProps {
   children?: React.ReactNode;
@@ -19,8 +21,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     sidebarWidth,
     isSidebarCollapsed,
     setSidebarWidth,
-    isDarkMode
+    isDarkMode,
+    isModalOpen
   } = useUIStore();
+
+  const { isOpen: isUserGuideOpen, closeGuide } = useUserGuideStore();
 
   const [isResizing, setIsResizing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -74,6 +79,26 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     document.body.style.userSelect = '';
   }, [handleResizeMove]);
 
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle sidebar with Ctrl/Cmd + B
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        const { toggleSidebar } = useUIStore.getState();
+        toggleSidebar();
+      }
+      
+      // Escape to close mobile sidebar
+      if (e.key === 'Escape' && isMobile && !isSidebarCollapsed) {
+        useUIStore.getState().collapseSidebar();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isMobile, isSidebarCollapsed]);
+
   // Cleanup event listeners on unmount
   useEffect(() => {
     return () => {
@@ -94,20 +119,22 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   }, [isDarkMode]);
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden">
+    <div className="flex h-screen bg-background text-foreground overflow-hidden antialiased">
       {/* Sidebar */}
-      <div
+      <aside
         className={cn(
-          'relative flex-shrink-0 border-r border-border transition-all duration-200',
-          isMobile && isSidebarCollapsed && 'absolute inset-y-0 left-0 z-50',
-          isMobile && isSidebarCollapsed && 'transform -translate-x-full',
-          isMobile && !isSidebarCollapsed && 'absolute inset-y-0 left-0 z-50 shadow-lg',
+          'relative flex-shrink-0 border-r border-border bg-surface/50 backdrop-blur-sm',
+          'transition-all duration-300 ease-out',
+          isMobile && isSidebarCollapsed && 'absolute inset-y-0 left-0 z-50 transform -translate-x-full',
+          isMobile && !isSidebarCollapsed && 'absolute inset-y-0 left-0 z-50 shadow-xl',
           !isMobile && isSidebarCollapsed && 'w-0 overflow-hidden',
-          !isMobile && !isSidebarCollapsed && 'overflow-visible'
+          !isMobile && !isSidebarCollapsed && 'overflow-visible shadow-sm'
         )}
         style={{
           width: isMobile ? (isSidebarCollapsed ? 0 : 280) : (isSidebarCollapsed ? 0 : sidebarWidth)
         }}
+        aria-label="Navigation sidebar"
+        aria-hidden={isSidebarCollapsed}
       >
         <Sidebar />
         
@@ -116,31 +143,64 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           <div
             ref={resizeRef}
             className={cn(
-              'absolute top-0 right-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-primary/20 transition-colors',
-              'group flex items-center justify-center',
+              'absolute top-0 right-0 w-1 h-full cursor-col-resize bg-transparent',
+              'hover:bg-primary/20 transition-all duration-200 ease-in-out',
+              'group flex items-center justify-center focus-ring',
               isResizing && 'bg-primary/30'
             )}
             onMouseDown={handleResizeStart}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                setSidebarWidth(Math.max(250, sidebarWidth - 20));
+              } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                setSidebarWidth(Math.min(500, sidebarWidth + 20));
+              }
+            }}
           >
-            <div className="w-0.5 h-8 bg-border group-hover:bg-primary/50 transition-colors" />
+            <div className="w-0.5 h-8 bg-border group-hover:bg-primary/60 transition-all duration-200" />
           </div>
         )}
-      </div>
+      </aside>
 
       {/* Mobile overlay */}
       {isMobile && !isSidebarCollapsed && (
         <div
-          className="fixed inset-0 bg-black/50 z-40"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-in fade-in-0 duration-200"
           onClick={() => useUIStore.getState().collapseSidebar()}
+          role="button"
+          aria-label="Close sidebar"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              useUIStore.getState().collapseSidebar();
+            }
+          }}
         />
       )}
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <main 
+        className="flex-1 flex flex-col min-w-0 bg-gradient-to-br from-background to-surface/30"
+        role="main"
+        aria-label="Main content"
+      >
         <MainPanel>
           {children}
         </MainPanel>
-      </div>
+      </main>
+
+      {/* User Guide Modal */}
+      <UserGuideModal 
+        isOpen={isUserGuideOpen} 
+        onClose={closeGuide} 
+      />
     </div>
   );
 };

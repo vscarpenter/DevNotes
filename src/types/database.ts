@@ -3,7 +3,7 @@
  * Requirements: 7.1, 7.6
  */
 
-import { Note, Folder } from './note';
+import { Note, Folder, Tag } from './note';
 import { SearchIndex } from './search';
 
 // IndexedDB schema definition
@@ -26,6 +26,16 @@ export interface DatabaseSchema {
       parentId: string | null;
       name: string;
       createdAt: Date;
+    };
+  };
+
+  tags: {
+    key: string;
+    value: Tag;
+    indexes: {
+      name: string;
+      createdAt: Date;
+      usageCount: number;
     };
   };
   
@@ -67,10 +77,12 @@ export interface ExportData {
   exportDate: Date;
   notes: Note[];
   folders: Folder[];
+  tags?: Tag[];
   settings: Record<string, any>;
   metadata: {
     totalNotes: number;
     totalFolders: number;
+    totalTags?: number;
     exportFormat: 'json' | 'zip';
   };
 }

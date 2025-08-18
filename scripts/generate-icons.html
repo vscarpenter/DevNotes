@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+</head>
+<body>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <div id="output"></div>
+    
+    <script>
+        const svgContent = `<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="devnotes-pwa-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="102" fill="url(#devnotes-pwa-grad)"/>
+  <text x="256" y="220" font-family="SF Mono, Monaco, monospace" font-size="120" font-weight="bold" text-anchor="middle" fill="white">&lt;/&gt;</text>
+  <rect x="384" y="384" width="76" height="76" rx="12" fill="white" opacity="0.8"/>
+</svg>`;
+
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const output = document.getElementById('output');
+
+        function generateIcon(size) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(svgBlob);
+                
+                img.onload = function() {
+                    canvas.width = size;
+                    canvas.height = size;
+                    ctx.drawImage(img, 0, 0, size, size);
+                    
+                    canvas.toBlob((blob) => {
+                        const link = document.createElement('a');
+                        link.download = `icon-${size}x${size}.png`;
+                        link.href = URL.createObjectURL(blob);
+                        link.textContent = `Download ${size}x${size}`;
+                        link.style.display = 'block';
+                        link.style.margin = '10px';
+                        output.appendChild(link);
+                        
+                        URL.revokeObjectURL(url);
+                        resolve();
+                    }, 'image/png');
+                };
+                
+                img.src = url;
+            });
+        }
+
+        // Generate Apple touch icon (180x180)
+        function generateAppleIcon() {
+            return new Promise((resolve) => {
+                const img = new Image();
+                const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(svgBlob);
+                
+                img.onload = function() {
+                    canvas.width = 180;
+                    canvas.height = 180;
+                    ctx.drawImage(img, 0, 0, 180, 180);
+                    
+                    canvas.toBlob((blob) => {
+                        const link = document.createElement('a');
+                        link.download = 'apple-touch-icon.png';
+                        link.href = URL.createObjectURL(blob);
+                        link.textContent = 'Download Apple Touch Icon (180x180)';
+                        link.style.display = 'block';
+                        link.style.margin = '10px';
+                        output.appendChild(link);
+                        
+                        URL.revokeObjectURL(url);
+                        resolve();
+                    }, 'image/png');
+                };
+                
+                img.src = url;
+            });
+        }
+
+        async function generateAllIcons() {
+            output.innerHTML = '<h2>Generated Icons (Right-click to save):</h2>';
+            
+            for (const size of sizes) {
+                await generateIcon(size);
+            }
+            
+            await generateAppleIcon();
+            
+            output.innerHTML += '<p><strong>Instructions:</strong> Right-click each link and save the files to public/icons/ directory</p>';
+        }
+
+        // Start generation when page loads
+        window.onload = generateAllIcons;
+    </script>
+</body>
+</html>

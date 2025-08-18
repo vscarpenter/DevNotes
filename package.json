@@ -11,7 +11,10 @@
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "deploy": "npm run build && npm run deploy:s3 && npm run deploy:invalidate",
+    "deploy:s3": "aws s3 sync dist/ s3://notes.vinny.dev --delete --cache-control \"public, max-age=31536000, immutable\" --exclude \"*.html\" --exclude \"*.json\" && aws s3 sync dist/ s3://notes.vinny.dev --delete --cache-control \"public, max-age=0, must-revalidate\" --include \"*.html\" --include \"*.json\"",
+    "deploy:invalidate": "aws cloudfront create-invalidation --distribution-id E219UQK7YM96PZ --paths \"/*\""
   },
   "dependencies": {
     "@codemirror/commands": "^6.8.1",
@@ -26,6 +29,7 @@
     "clsx": "^2.0.0",
     "codemirror": "^6.0.2",
     "dexie": "^3.2.4",
+    "fuse.js": "^7.1.0",
     "jszip": "^3.10.1",
     "katex": "^0.16.22",
     "lucide-react": "^0.294.0",
@@ -48,9 +52,11 @@
     "zustand": "^4.5.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.5.1",
+    "@types/jest-axe": "^3.5.9",
     "@types/jszip": "^3.4.0",
     "@types/katex": "^0.16.7",
     "@types/node": "^24.3.0",
@@ -63,11 +69,15 @@
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "jest-axe": "^10.0.0",
     "jsdom": "^23.0.1",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.3.6",
+    "terser": "^5.43.1",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
-    "vitest": "^1.0.4"
+    "vite-plugin-pwa": "^1.0.2",
+    "vitest": "^1.0.4",
+    "workbox-window": "^7.3.0"
   }
 }

@@ -50,6 +50,26 @@ export const useAppStore = create<AppStore>()(
         const recentNotes = useNoteStore.getState().getRecentNotes(20);
         useSearchStore.getState().updateRecentNotes(recentNotes.map(note => note.id));
 
+        // Handle PWA shortcuts
+        const pwaAction = sessionStorage.getItem('pwa-action');
+        if (pwaAction) {
+          sessionStorage.removeItem('pwa-action');
+          
+          switch (pwaAction) {
+            case 'new-note':
+              // Create a new note in the root folder or selected folder
+              const selectedFolderId = useFolderStore.getState().selectedFolderId;
+              const targetFolderId = selectedFolderId || 'root';
+              await get().createNoteInFolder(targetFolderId, 'New Note');
+              break;
+              
+            case 'search':
+              // Open search interface
+              useUIStore.getState().setSearchOpen(true);
+              break;
+          }
+        }
+
         set({ isInitialized: true });
         useUIStore.getState().setLoading(false);
       } catch (error) {

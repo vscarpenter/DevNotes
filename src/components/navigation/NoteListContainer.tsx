@@ -77,7 +77,7 @@ export const NoteListContainer: React.FC<NoteListContainerProps> = ({
   const listHeight = Math.max(200, containerHeight - headerHeight);
 
   return (
-    <div ref={containerRef} className={cn("flex flex-col h-full", className)}>
+    <div ref={containerRef} className={cn("flex flex-col h-full min-h-0", className)}>
       {/* Header with sorting controls */}
       <NoteListHeader
         totalCount={filteredNoteCount}
@@ -88,7 +88,7 @@ export const NoteListContainer: React.FC<NoteListContainerProps> = ({
       />
       
       {/* Note list with virtual scrolling */}
-      <div className="flex-1">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <NoteList
           folderId={folderId}
           searchQuery={searchQuery}

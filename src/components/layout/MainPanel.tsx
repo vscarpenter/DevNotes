@@ -4,10 +4,11 @@
  * Requirements: 1.1, 1.2, 4.1
  */
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { useNoteStore } from '@/stores/noteStore';
 import { useFolderStore } from '@/stores/folderStore';
+import { useUserGuideStore } from '@/stores/userGuideStore';
 import { cn } from '@/lib/utils';
 import { 
   Menu, 
@@ -17,10 +18,96 @@ import {
   MoreHorizontal,
   Save,
   Clock,
-  Hash
+  Hash,
+  HelpCircle
 } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button, Logo } from '@/components/ui';
 import { SplitView } from '@/components/editor/SplitView';
+
+interface EditableNoteTitleProps {
+  noteId: string;
+  title: string;
+  onUpdate: (newTitle: string) => void;
+}
+
+const EditableNoteTitle: React.FC<EditableNoteTitleProps> = ({ noteId, title, onUpdate }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleDoubleClick = () => {
+    setIsEditing(true);
+    setEditValue(title);
+  };
+
+  const handleSubmit = () => {
+    const trimmedValue = editValue.trim();
+    if (trimmedValue && trimmedValue !== title) {
+      onUpdate(trimmedValue);
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditValue(title);
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSubmit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleCancel();
+    }
+  };
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  // Handle click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (inputRef.current && !inputRef.current.contains(event.target as Node)) {
+        handleSubmit();
+      }
+    };
+
+    if (isEditing) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isEditing, editValue]);
+
+  if (isEditing) {
+    return (
+      <input
+        ref={inputRef}
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        className="font-medium text-foreground bg-transparent border-none outline-none min-w-0 flex-1 text-sm"
+        placeholder="Note title..."
+      />
+    );
+  }
+
+  return (
+    <div 
+      className="font-medium text-foreground truncate cursor-pointer hover:bg-accent/50 px-1 py-0.5 rounded transition-colors"
+      onDoubleClick={handleDoubleClick}
+      title="Double-click to edit title"
+    >
+      {title}
+    </div>
+  );
+};
 
 interface MainPanelProps {
   children?: React.ReactNode;
@@ -39,8 +126,9 @@ export const MainPanel: React.FC<MainPanelProps> = ({ children, className }) => 
     selectionInfo
   } = useUIStore();
 
-  const { selectedNoteId, getNote } = useNoteStore();
+  const { selectedNoteId, getNote, updateNote } = useNoteStore();
   const { getFolder } = useFolderStore();
+  const { openGuide } = useUserGuideStore();
 
   // Get current note and folder information
   const currentNote = selectedNoteId ? getNote(selectedNoteId) : null;
@@ -132,9 +220,17 @@ export const MainPanel: React.FC<MainPanelProps> = ({ children, className }) => 
           <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
             <FileText className="h-4 w-4 flex-shrink-0" />
             <div className="min-w-0">
-              <div className="font-medium text-foreground truncate">
-                {currentNote?.title || 'No note selected'}
-              </div>
+              {currentNote ? (
+                <EditableNoteTitle 
+                  noteId={currentNote.id}
+                  title={currentNote.title}
+                  onUpdate={(newTitle) => updateNote(currentNote.id, { title: newTitle })}
+                />
+              ) : (
+                <div className="font-medium text-foreground truncate">
+                  No note selected
+                </div>
+              )}
               {currentNote && currentFolder && (
                 <div className="text-xs text-muted-foreground truncate">
                   in {currentFolder.name}
@@ -191,6 +287,17 @@ export const MainPanel: React.FC<MainPanelProps> = ({ children, className }) => 
             </Button>
           )}
 
+          {/* Help button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => openGuide()}
+            title="Open user guide"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </Button>
+
           {/* More options */}
           <Button
             variant="ghost"
@@ -212,7 +319,9 @@ export const MainPanel: React.FC<MainPanelProps> = ({ children, className }) => 
         ) : (
           <div className="h-full flex items-center justify-center">
             <div className="text-center max-w-md mx-auto p-8">
-              <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <div className="flex justify-center mb-6">
+                <Logo size="lg" variant="full" />
+              </div>
               <h2 className="text-xl font-semibold mb-2">Welcome to DevNotes</h2>
               <p className="text-muted-foreground mb-6">
                 A developer-focused note-taking application with markdown support, 

@@ -5,6 +5,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useFolderStore } from '@/stores/folderStore';
 import { useNoteStore } from '@/stores/noteStore';
 import { cn } from '@/lib/utils';
@@ -75,10 +76,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  return (
+  const menuContent = (
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-[160px] bg-popover border border-border rounded-md shadow-lg py-1"
+      className="fixed z-[99999] min-w-[160px] bg-popover border border-border rounded-md shadow-lg py-1"
       style={{ left: position.x, top: position.y }}
     >
       <button
@@ -114,6 +115,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       </button>
     </div>
   );
+
+  return createPortal(menuContent, document.body);
 };
 
 const FolderTreeItem: React.FC<FolderTreeItemProps> = ({ 
@@ -434,7 +437,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 
       {/* Inline editing overlay */}
       {editingFolder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/50">
           <div className="bg-popover border border-border rounded-md p-4 min-w-[300px]">
             <h4 className="text-sm font-medium mb-2">Rename Folder</h4>
             <input

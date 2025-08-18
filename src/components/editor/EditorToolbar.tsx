@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useUIStore } from '../../stores/uiStore';
+import { TooltipWrapper } from '../userGuide/withTooltip';
 
 interface EditorToolbarProps {
   onBold: () => void;
@@ -83,25 +84,29 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     <div className="flex items-center gap-1 p-2 border-b border-border bg-background">
       {/* Text formatting */}
       <div className="flex items-center gap-1 border-r border-border pr-2 mr-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBold}
-          title="Bold (Ctrl+B)"
-          className="h-8 w-8 p-0"
-        >
-          <Bold className="h-4 w-4" />
-        </Button>
+        <TooltipWrapper tooltipId="editor-toolbar-bold">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBold}
+            title="Bold (Ctrl+B)"
+            className="h-8 w-8 p-0"
+          >
+            <Bold className="h-4 w-4" />
+          </Button>
+        </TooltipWrapper>
         
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onItalic}
-          title="Italic (Ctrl+I)"
-          className="h-8 w-8 p-0"
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
+        <TooltipWrapper tooltipId="editor-toolbar-italic">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onItalic}
+            title="Italic (Ctrl+I)"
+            className="h-8 w-8 p-0"
+          >
+            <Italic className="h-4 w-4" />
+          </Button>
+        </TooltipWrapper>
       </div>
 
       {/* Headings */}
@@ -139,35 +144,41 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
       {/* Links and code */}
       <div className="flex items-center gap-1 border-r border-border pr-2 mr-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onLink}
-          title="Link (Ctrl+K)"
-          className="h-8 w-8 p-0"
-        >
-          <Link className="h-4 w-4" />
-        </Button>
+        <TooltipWrapper tooltipId="editor-toolbar-link">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onLink}
+            title="Link (Ctrl+K)"
+            className="h-8 w-8 p-0"
+          >
+            <Link className="h-4 w-4" />
+          </Button>
+        </TooltipWrapper>
         
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onCode}
-          title="Inline Code"
-          className="h-8 w-8 p-0"
-        >
-          <Code className="h-4 w-4" />
-        </Button>
+        <TooltipWrapper tooltipId="editor-toolbar-code">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCode}
+            title="Inline Code"
+            className="h-8 w-8 p-0"
+          >
+            <Code className="h-4 w-4" />
+          </Button>
+        </TooltipWrapper>
         
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onCodeBlock}
-          title="Code Block"
-          className="h-8 w-8 p-0"
-        >
-          <FileCode className="h-4 w-4" />
-        </Button>
+        <TooltipWrapper tooltipId="editor-toolbar-code">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCodeBlock}
+            title="Code Block"
+            className="h-8 w-8 p-0"
+          >
+            <FileCode className="h-4 w-4" />
+          </Button>
+        </TooltipWrapper>
       </div>
 
       {/* Math and diagrams */}
@@ -216,41 +227,47 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             <Edit className="h-4 w-4" />
           </Button>
           
-          <Button
-            variant={panelLayout === 'split' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setPanelLayout('split')}
-            title="Split View"
-            className="h-8 w-8 p-0"
-          >
-            <Split className="h-4 w-4" />
-          </Button>
+          <TooltipWrapper tooltipId="editor-split-view">
+            <Button
+              variant={panelLayout === 'split' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setPanelLayout('split')}
+              title="Split View"
+              className="h-8 w-8 p-0"
+            >
+              <Split className="h-4 w-4" />
+            </Button>
+          </TooltipWrapper>
           
-          <Button
-            variant={panelLayout === 'preview-only' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setPanelLayout('preview-only')}
-            title="Preview Only"
-            className="h-8 w-8 p-0"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
+          <TooltipWrapper tooltipId="editor-preview-toggle">
+            <Button
+              variant={panelLayout === 'preview-only' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setPanelLayout('preview-only')}
+              title="Preview Only"
+              className="h-8 w-8 p-0"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          </TooltipWrapper>
         </div>
       )}
 
       {/* Save status */}
       <div className="flex items-center gap-2 ml-auto">
-        <Button
-          variant={getSaveButtonVariant()}
-          size="sm"
-          onClick={onSave}
-          title="Save (Ctrl+S)"
-          className="h-8 px-3"
-          disabled={saveStatus === 'saving'}
-        >
-          <Save className="h-4 w-4 mr-1" />
-          {getSaveButtonText()}
-        </Button>
+        <TooltipWrapper tooltipId="auto-save-indicator">
+          <Button
+            variant={getSaveButtonVariant()}
+            size="sm"
+            onClick={onSave}
+            title="Save (Ctrl+S)"
+            className="h-8 px-3"
+            disabled={saveStatus === 'saving'}
+          >
+            <Save className="h-4 w-4 mr-1" />
+            {getSaveButtonText()}
+          </Button>
+        </TooltipWrapper>
       </div>
     </div>
   );

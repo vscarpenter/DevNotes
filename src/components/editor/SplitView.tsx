@@ -131,8 +131,8 @@ export const SplitView: React.FC<SplitViewProps> = ({
             ref={editorRef}
             className={`
               ${panelLayout === 'split' ? 'w-1/2 border-r border-border' : 'w-full'}
-              overflow-hidden
             `}
+            style={{ height: '100%' }}
           >
             <MarkdownEditor 
               noteId={noteId}

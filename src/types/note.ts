@@ -26,6 +26,20 @@ export interface Folder {
   isExpanded: boolean;
 }
 
+// Tag-related interfaces
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: Date;
+  usageCount: number;
+}
+
+export interface TagFilter {
+  includeTags: string[];
+  excludeTags: string[];
+}
+
 // Utility types for note operations
 export type CreateNoteInput = Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'wordCount' | 'readingTime'>;
 export type UpdateNoteInput = Partial<Pick<Note, 'title' | 'content' | 'folderId' | 'tags'>>;

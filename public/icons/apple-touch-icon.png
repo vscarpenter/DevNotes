@@ -1,0 +1,11 @@
+<svg width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="devnotes-apple-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="180" height="180" rx="36" fill="url(#devnotes-apple-grad)"/>
+  <text x="90" y="75" font-family="SF Mono, Monaco, monospace" font-size="45" font-weight="bold" text-anchor="middle" fill="white">&lt;/&gt;</text>
+  <rect x="135" y="135" width="27" height="27" rx="4" fill="white" opacity="0.8"/>
+</svg>

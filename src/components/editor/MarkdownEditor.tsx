@@ -57,124 +57,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 
 
 
-  // Handle content changes
-  const handleContentChange = useCallback((content: string) => {
-    scheduleAutoSave(content);
-  }, [scheduleAutoSave]);
-
-  // Create editor extensions
-  const createExtensions = useCallback(() => {
-    const extensions = [
-      basicSetup,
-      markdown(),
-    ];
-
-    // Add keyboard shortcuts
-    if (keymap?.of) {
-      extensions.push(keymap.of([
-        ...defaultKeymap,
-        indentWithTab,
-        // Custom keyboard shortcuts
-        {
-          key: 'Ctrl-b',
-          mac: 'Cmd-b',
-          run: () => {
-            insertFormatting('**', '**');
-            return true;
-          }
-        },
-        {
-          key: 'Ctrl-i',
-          mac: 'Cmd-i',
-          run: () => {
-            insertFormatting('*', '*');
-            return true;
-          }
-        },
-        {
-          key: 'Ctrl-k',
-          mac: 'Cmd-k',
-          run: () => {
-            insertFormatting('[', '](url)');
-            return true;
-          }
-        },
-        {
-          key: 'Ctrl-s',
-          mac: 'Cmd-s',
-          run: () => {
-            forceSave();
-            return true;
-          }
-        }
-      ]));
-    }
-
-    // Add update listener
-    if (EditorView?.updateListener?.of) {
-      extensions.push(EditorView.updateListener.of((update) => {
-        if (update.docChanged) {
-          const content = update.state.doc.toString();
-          handleContentChange(content);
-        }
-        
-        // Update cursor position and selection info
-        if (update.selectionSet || update.docChanged) {
-          const { from, to } = update.state.selection.main;
-          const doc = update.state.doc;
-          const line = doc.lineAt(from);
-          const column = from - line.from + 1;
-          
-          setCursorPosition({ 
-            line: line.number, 
-            column 
-          });
-          
-          setSelectionInfo({
-            hasSelection: from !== to,
-            selectedLength: to - from
-          });
-        }
-      }));
-    }
-
-    // Add theme
-    if (EditorView?.theme) {
-      extensions.push(EditorView.theme({
-        '&': {
-          fontSize: `${fontSize}px`,
-          fontFamily: 'Geist Mono, monospace'
-        },
-        '.cm-editor': {
-          height: '100%'
-        },
-        '.cm-scroller': {
-          fontFamily: 'Geist Mono, monospace',
-          lineHeight: '1.5'
-        },
-        '.cm-content': {
-          padding: '16px',
-          minHeight: '100%'
-        },
-        '.cm-focused': {
-          outline: 'none'
-        }
-      }));
-    }
-
-    // Add line wrapping
-    if (wordWrap) {
-      extensions.push(EditorView.lineWrapping);
-    }
-
-    // Add dark theme if enabled
-    if (isDarkMode && oneDark) {
-      extensions.push(oneDark);
-    }
-
-    return extensions;
-  }, [isDarkMode, showLineNumbers, wordWrap, fontSize, handleContentChange, forceSave]);
-
   // Insert formatting helper
   const insertFormatting = useCallback((before: string, after: string) => {
     const view = viewRef.current;
@@ -195,6 +77,124 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     
     view.focus();
   }, []);
+
+  // Handle content changes
+  const handleContentChange = useCallback((content: string) => {
+    scheduleAutoSave(content);
+  }, [scheduleAutoSave]);
+
+  // Create editor extensions
+  const createExtensions = useCallback(() => {
+    const extensions = [
+      basicSetup,
+      markdown(),
+    ];
+
+    // Add keyboard shortcuts
+    extensions.push(keymap.of([
+      ...defaultKeymap,
+      indentWithTab,
+      // Custom keyboard shortcuts
+      {
+        key: 'Ctrl-b',
+        mac: 'Cmd-b',
+        run: () => {
+          insertFormatting('**', '**');
+          return true;
+        }
+      },
+      {
+        key: 'Ctrl-i',
+        mac: 'Cmd-i',
+        run: () => {
+          insertFormatting('*', '*');
+          return true;
+        }
+      },
+      {
+        key: 'Ctrl-k',
+        mac: 'Cmd-k',
+        run: () => {
+          insertFormatting('[', '](url)');
+          return true;
+        }
+      },
+      {
+        key: 'Ctrl-s',
+        mac: 'Cmd-s',
+        run: () => {
+          forceSave();
+          return true;
+        }
+      }
+    ]));
+
+    // Add update listener
+    extensions.push(EditorView.updateListener.of((update) => {
+      if (update.docChanged) {
+        const content = update.state.doc.toString();
+        handleContentChange(content);
+      }
+      
+      // Update cursor position and selection info
+      if (update.selectionSet || update.docChanged) {
+        const { from, to } = update.state.selection.main;
+        const doc = update.state.doc;
+        const line = doc.lineAt(from);
+        const column = from - line.from + 1;
+        
+        setCursorPosition({ 
+          line: line.number, 
+          column 
+        });
+        
+        setSelectionInfo({
+          hasSelection: from !== to,
+          selectedLength: to - from
+        });
+      }
+    }));
+
+    // Add theme
+    extensions.push(EditorView.theme({
+      '&': {
+        fontSize: `${fontSize}px`,
+        fontFamily: 'Geist Mono, monospace',
+        height: '100%'
+      },
+      '.cm-editor': {
+        height: '100%'
+      },
+      '.cm-scroller': {
+        fontFamily: 'Geist Mono, monospace',
+        lineHeight: '1.5',
+        overflow: 'auto'
+      },
+      '.cm-content': {
+        padding: '16px',
+        minHeight: '100%',
+        cursor: 'text'
+      },
+      '.cm-focused': {
+        outline: 'none'
+      },
+      '&.cm-editor.cm-focused': {
+        outline: 'none'
+      }
+    }));
+
+    // Add line wrapping
+    if (wordWrap) {
+      extensions.push(EditorView.lineWrapping);
+    }
+
+    // Add dark theme if enabled
+    if (isDarkMode) {
+      extensions.push(oneDark);
+    }
+
+    return extensions;
+  }, [isDarkMode, showLineNumbers, wordWrap, fontSize, handleContentChange, forceSave, insertFormatting]);
 
   // Toolbar action handlers
   const handleBold = useCallback(() => insertFormatting('**', '**'), [insertFormatting]);
@@ -219,6 +219,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   useEffect(() => {
     if (!editorRef.current || !note) return;
 
+    // Clear any existing content
+    editorRef.current.innerHTML = '';
+
     const state = EditorState.create({
       doc: note.content,
       extensions: createExtensions()
@@ -231,11 +234,20 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 
     viewRef.current = view;
 
+    // Focus the editor after a short delay to ensure it's fully rendered
+    setTimeout(() => {
+      if (view && !view.dom.querySelector('.cm-focused')) {
+        view.focus();
+      }
+    }, 100);
+
     return () => {
-      view.destroy();
+      if (view) {
+        view.destroy();
+      }
       viewRef.current = null;
     };
-  }, [note?.id, createExtensions]);
+  }, [note?.id]);
 
   // Update editor when note content changes externally
   useEffect(() => {
@@ -254,16 +266,26 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
   }, [note?.content]);
 
-  // Update extensions when settings change
+  // Recreate editor when settings change
   useEffect(() => {
     const view = viewRef.current;
-    if (!view) return;
+    if (!view || !note) return;
 
-    const compartment = new Compartment();
-    view.dispatch({
-      effects: compartment.reconfigure(createExtensions())
+    // Destroy and recreate the editor with new extensions
+    view.destroy();
+    
+    const state = EditorState.create({
+      doc: note.content,
+      extensions: createExtensions()
     });
-  }, [createExtensions]);
+
+    const newView = new EditorView({
+      state,
+      parent: editorRef.current!
+    });
+
+    viewRef.current = newView;
+  }, [isDarkMode, showLineNumbers, wordWrap, fontSize]);
 
   if (!note) {
     return (
@@ -289,8 +311,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       />
       <div 
         ref={editorRef} 
-        className="flex-1 overflow-hidden border-t border-border"
+        className="flex-1 border-t border-border"
         data-testid="markdown-editor"
+        style={{ height: '100%', minHeight: '200px' }}
       />
     </div>
   );
