@@ -101,7 +101,7 @@ The preview updates in real-time as you type, with efficient rendering and minim
 `;
 
 export const PreviewDemo: React.FC = () => {
-  const { createNote, notes } = useNoteStore();
+  const { createNote } = useNoteStore();
   const { setPanelLayout } = useUIStore();
   const [demoNoteId, setDemoNoteId] = useState<string | null>(null);
 

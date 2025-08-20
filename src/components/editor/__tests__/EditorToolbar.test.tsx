@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EditorToolbar } from '../EditorToolbar';
 import { useUIStore } from '../../../stores/uiStore';
@@ -14,7 +14,7 @@ import { vi } from 'vitest';
 // Mock the UI store
 vi.mock('../../../stores/uiStore');
 
-const mockUseUIStore = useUIStore as any;
+const mockUseUIStore = vi.mocked(useUIStore);
 
 describe('EditorToolbar', () => {
   const mockHandlers = {
@@ -184,8 +184,44 @@ describe('EditorToolbar', () => {
 
     testCases.forEach(({ status, text, disabled }) => {
       mockUseUIStore.mockReturnValue({
-        ...mockUseUIStore(),
-        saveStatus: status
+        saveStatus: status,
+        isDarkMode: false,
+        showLineNumbers: true,
+        wordWrap: true,
+        fontSize: 14,
+        setSaveStatus: vi.fn(),
+        sidebarWidth: 300,
+        isSidebarCollapsed: false,
+        panelLayout: 'split',
+        theme: 'light',
+        isPreviewMode: false,
+        isLoading: false,
+        error: null,
+        cursorPosition: { line: 1, column: 1 },
+        selectionInfo: { hasSelection: false, selectedLength: 0 },
+        isSearchOpen: false,
+        searchQuery: '',
+        // Layout actions
+        setSidebarWidth: vi.fn(),
+        toggleSidebar: vi.fn(),
+        setPanelLayout: vi.fn(),
+        // Theme actions
+        setTheme: vi.fn(),
+        toggleTheme: vi.fn(),
+        // Editor actions
+        togglePreviewMode: vi.fn(),
+        setShowLineNumbers: vi.fn(),
+        setWordWrap: vi.fn(),
+        setFontSize: vi.fn(),
+        setCursorPosition: vi.fn(),
+        setSelectionInfo: vi.fn(),
+        // Application actions
+        setLoading: vi.fn(),
+        setError: vi.fn(),
+        clearError: vi.fn(),
+        // Search actions
+        setSearchOpen: vi.fn(),
+        setSearchQuery: vi.fn()
       });
 
       const { rerender } = render(<EditorToolbar {...mockHandlers} />);

@@ -4,7 +4,7 @@
  * Requirements: 4.3, 4.5, 4.6, 4.7
  */
 
-import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo, useEffect, useRef, useCallback } from 'react';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
@@ -132,16 +132,17 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   };
 
   // Scroll to specific position (for synchronized scrolling)
-  const scrollToPosition = (scrollTop: number) => {
+  const scrollToPosition = useCallback((scrollTop: number) => {
     if (previewRef.current) {
       previewRef.current.scrollTop = scrollTop;
     }
-  };
+  }, []);
 
   // Expose scroll method to parent via ref callback
   React.useEffect(() => {
-    if (previewRef.current && typeof previewRef.current === 'object') {
-      (previewRef.current as any).scrollToPosition = scrollToPosition;
+    if (previewRef.current) {
+      // Add custom property to DOM element (typed as unknown then HTMLDivElement with custom property)
+      (previewRef.current as HTMLDivElement & { scrollToPosition: (scrollTop: number) => void }).scrollToPosition = scrollToPosition;
     }
   }, [scrollToPosition]);
 

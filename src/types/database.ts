@@ -43,7 +43,7 @@ export interface DatabaseSchema {
     key: string;
     value: {
       key: string;
-      value: any;
+      value: string | number | boolean | object;
     };
   };
   
@@ -78,7 +78,7 @@ export interface ExportData {
   notes: Note[];
   folders: Folder[];
   tags?: Tag[];
-  settings: Record<string, any>;
+  settings: Record<string, string | number | boolean | object>;
   metadata: {
     totalNotes: number;
     totalFolders: number;

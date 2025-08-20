@@ -3,7 +3,7 @@
  * Requirements: 1.4, 1.5
  */
 
-import { GuideSection, GuideContent } from '../../types/userGuide';
+import { GuideSection } from '../../types/userGuide';
 
 // Cache for loaded content sections
 const contentCache = new Map<string, GuideSection>();
@@ -27,8 +27,19 @@ const performanceMetrics: PerformanceMetrics = {
  */
 export class LazyContentLoader {
   private static loadingPromises = new Map<string, Promise<GuideSection>>();
+  private static readonly MAX_CONTENT_SIZE = 100 * 1024; // 100KB max content size
+  private static readonly LOAD_TIMEOUT = 5000; // 5 seconds timeout
+  private static abortController: AbortController | null = null;
+  private static preloadQueue: string[] = [];
+  private static isPreloading = false;
 
   static async loadSection(sectionId: string): Promise<GuideSection> {
+    // Validate section ID
+    if (!sectionId || typeof sectionId !== 'string') {
+      console.error('Invalid section ID provided to LazyContentLoader');
+      return this.createFallbackSection('invalid-section');
+    }
+
     // Check cache first
     if (contentCache.has(sectionId)) {
       return contentCache.get(sectionId)!;
@@ -39,16 +50,40 @@ export class LazyContentLoader {
       return this.loadingPromises.get(sectionId)!;
     }
 
-    // Start loading
+    // Create a new abort controller for this request
+    this.abortController = new AbortController();
+    
+    // Start loading with timeout protection
     const loadPromise = this.loadSectionContent(sectionId);
     this.loadingPromises.set(sectionId, loadPromise);
 
     try {
       const section = await loadPromise;
+      if (!section) {
+        throw new Error(`Failed to load section: ${sectionId}`);
+      }
+      
+      // Validate section content size
+      if (section.content && section.content.length > this.MAX_CONTENT_SIZE) {
+        console.warn(`Section ${sectionId} content exceeds maximum size (${section.content.length} > ${this.MAX_CONTENT_SIZE}). Truncating.`);
+        section.content = section.content.substring(0, this.MAX_CONTENT_SIZE) + 
+          '\n\n*Content truncated due to size limitations*';
+      }
+      
       contentCache.set(sectionId, section);
+      
+      // Queue adjacent sections for preloading
+      this.queueSectionForPreload(sectionId);
+      
       return section;
+    } catch (error) {
+      console.error(`Error loading section ${sectionId}:`, error);
+      // Return fallback content instead of throwing
+      const fallbackSection = this.createFallbackSection(sectionId);
+      return fallbackSection;
     } finally {
       this.loadingPromises.delete(sectionId);
+      this.abortController = null;
     }
   }
 
@@ -56,24 +91,18 @@ export class LazyContentLoader {
     const startTime = performance.now();
 
     try {
-      // Dynamic import based on section ID
-      const [category, section] = sectionId.split('/');
-      const module = await import(`../../content/userGuide/markdown/${category}/${section}.md?raw`);
-      const content = typeof module === 'string' ? module : module.default || module;
-
-      // Get metadata
-      const metadata = this.getSectionMetadata(sectionId);
+      // Import the content loader with pre-compiled markdown modules
+      const { getSectionByIdDirect } = await import('../../content/userGuide/contentLoader');
       
-      const guideSection: GuideSection = {
-        id: sectionId,
-        title: metadata.title,
-        content: String(content),
-        searchKeywords: metadata.searchKeywords,
-        category: metadata.category,
-      };
+      // Get the specific section
+      const section = await getSectionByIdDirect(sectionId);
+      
+      if (!section) {
+        throw new Error(`Section ${sectionId} not found`);
+      }
 
       performanceMetrics.contentLoadTime = performance.now() - startTime;
-      return guideSection;
+      return section;
     } catch (error) {
       console.error(`Failed to load section ${sectionId}:`, error);
       
@@ -90,7 +119,11 @@ export class LazyContentLoader {
   }
 
   private static getSectionMetadata(sectionId: string) {
-    const metadataMap: Record<string, any> = {
+    const metadataMap: Record<string, {
+      title: string;
+      searchKeywords: string[];
+      category: 'getting-started' | 'features' | 'advanced' | 'troubleshooting';
+    }> = {
       'getting-started/welcome': {
         title: 'Welcome to DevNotes',
         searchKeywords: ['welcome', 'introduction', 'getting started', 'overview', 'devnotes'],
@@ -164,6 +197,57 @@ export class LazyContentLoader {
       category: 'getting-started' as const
     };
   }
+  
+  private static createFallbackSection(sectionId: string): GuideSection {
+    const metadata = this.getSectionMetadata(sectionId);
+    return {
+      id: sectionId,
+      title: metadata.title,
+      content: `# ${metadata.title}\n\nWe're sorry, but this content couldn't be loaded. Please try again later or check another section.\n\n**Troubleshooting Tips:**\n- Refresh the page\n- Clear your browser cache\n- Try a different browser`,
+      searchKeywords: metadata.searchKeywords,
+      category: metadata.category,
+    };
+  }
+
+  static queueSectionForPreload(sectionId: string): void {
+    try {
+      // Add to preload queue if not already in cache or queue
+      if (!contentCache.has(sectionId) && !this.preloadQueue.includes(sectionId)) {
+        this.preloadQueue.push(sectionId);
+      }
+      
+      // Start preloading if not already in progress
+      if (!this.isPreloading) {
+        this.processPreloadQueue();
+      }
+    } catch (error) {
+      console.error('Error queueing section for preload:', error);
+    }
+  }
+  
+  private static async processPreloadQueue(): Promise<void> {
+    if (this.isPreloading || this.preloadQueue.length === 0) return;
+    
+    this.isPreloading = true;
+    
+    try {
+      // Process one item at a time to avoid overwhelming the browser
+      const sectionId = this.preloadQueue.shift();
+      if (sectionId) {
+        await this.preloadSection(sectionId);
+      }
+    } catch (error) {
+      console.warn('Error processing preload queue:', error);
+    } finally {
+      this.isPreloading = false;
+      
+      // Continue processing queue if there are more items
+      if (this.preloadQueue.length > 0) {
+        // Use setTimeout to avoid blocking the main thread
+        setTimeout(() => this.processPreloadQueue(), 100);
+      }
+    }
+  }
 
   static preloadSection(sectionId: string): void {
     // Preload in background without blocking
@@ -175,10 +259,27 @@ export class LazyContentLoader {
   static clearCache(): void {
     contentCache.clear();
     this.loadingPromises.clear();
+    this.preloadQueue = [];
+    this.isPreloading = false;
+    
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
   }
 
   static getCacheSize(): number {
     return contentCache.size;
+  }
+  
+  static cancelLoading(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+    
+    this.preloadQueue = [];
+    this.isPreloading = false;
   }
 }
 
@@ -264,79 +365,156 @@ export class VirtualScrollManager {
   private scrollTop: number = 0;
   private startIndex: number = 0;
   private endIndex: number = 0;
+  private scrollHandler: () => void;
+  private isDestroyed: boolean = false;
+  private maxItemsLimit: number = 1000; // Safety limit to prevent browser crashes
 
-  constructor(
-    container: HTMLElement,
-    items: HTMLElement[],
-    itemHeight: number = 100
-  ) {
+  constructor(config: {
+    container: HTMLElement;
+    items?: HTMLElement[];
+    itemHeight?: number;
+    maxItemsLimit?: number;
+  }) {
+    const { container, items = [], itemHeight = 100, maxItemsLimit = 1000 } = config;
+    if (!container || !(container instanceof HTMLElement)) {
+      console.error('Invalid container provided to VirtualScrollManager');
+      throw new Error('Invalid container element');
+    }
+
     this.container = container;
-    this.items = items;
+    this.items = this.validateItems(items);
     this.itemHeight = itemHeight;
+    this.maxItemsLimit = maxItemsLimit;
     this.visibleCount = Math.ceil(container.clientHeight / itemHeight) + 2; // Buffer
+    
+    // Bind the handler once to avoid memory leaks
+    this.scrollHandler = this.handleScroll.bind(this);
     
     this.setupVirtualScrolling();
   }
 
+  private validateItems(items: HTMLElement[]): HTMLElement[] {
+    // Ensure items is an array and contains only HTMLElements
+    if (!Array.isArray(items)) {
+      console.warn('Invalid items array provided to VirtualScrollManager');
+      return [];
+    }
+
+    // Filter out non-HTMLElements
+    const validItems = items.filter(item => item instanceof HTMLElement);
+    
+    // Apply safety limit to prevent browser crashes
+    if (validItems.length > this.maxItemsLimit) {
+      console.warn(`Items array exceeds safety limit (${validItems.length} > ${this.maxItemsLimit}). Truncating.`);
+      return validItems.slice(0, this.maxItemsLimit);
+    }
+    
+    return validItems;
+  }
+
   private setupVirtualScrolling(): void {
-    // Set container height
-    const totalHeight = this.items.length * this.itemHeight;
-    this.container.style.height = `${totalHeight}px`;
-    this.container.style.position = 'relative';
+    if (this.isDestroyed) return;
+    
+    try {
+      // Set container height
+      const totalHeight = this.items.length * this.itemHeight;
+      this.container.style.height = `${totalHeight}px`;
+      this.container.style.position = 'relative';
 
-    // Initial render
-    this.updateVisibleItems();
+      // Initial render
+      this.updateVisibleItems();
 
-    // Add scroll listener
-    this.container.addEventListener('scroll', this.handleScroll.bind(this));
+      // Add scroll listener
+      this.container.addEventListener('scroll', this.scrollHandler);
+    } catch (error) {
+      console.error('Error setting up virtual scrolling:', error);
+    }
   }
 
   private handleScroll(): void {
-    this.scrollTop = this.container.scrollTop;
-    this.updateVisibleItems();
+    if (this.isDestroyed) return;
+    
+    // Use requestAnimationFrame to optimize scroll performance
+    requestAnimationFrame(() => {
+      try {
+        this.scrollTop = this.container.scrollTop;
+        this.updateVisibleItems();
+      } catch (error) {
+        console.error('Error handling scroll:', error);
+      }
+    });
   }
 
   private updateVisibleItems(): void {
-    this.startIndex = Math.floor(this.scrollTop / this.itemHeight);
-    this.endIndex = Math.min(
-      this.startIndex + this.visibleCount,
-      this.items.length
-    );
+    if (this.isDestroyed) return;
+    
+    try {
+      this.startIndex = Math.max(0, Math.floor(this.scrollTop / this.itemHeight));
+      this.endIndex = Math.min(
+        this.startIndex + this.visibleCount,
+        this.items.length
+      );
 
-    // Hide all items first
-    this.items.forEach(item => {
-      item.style.display = 'none';
-    });
+      // Hide all items first
+      this.items.forEach(item => {
+        if (item && item.style) {
+          item.style.display = 'none';
+        }
+      });
 
-    // Show visible items
-    for (let i = this.startIndex; i < this.endIndex; i++) {
-      const item = this.items[i];
-      if (item) {
-        item.style.display = 'block';
-        item.style.position = 'absolute';
-        item.style.top = `${i * this.itemHeight}px`;
-        item.style.width = '100%';
+      // Show visible items
+      for (let i = this.startIndex; i < this.endIndex; i++) {
+        const item = this.items[i];
+        if (item && item.style) {
+          item.style.display = 'block';
+          item.style.position = 'absolute';
+          item.style.top = `${i * this.itemHeight}px`;
+          item.style.width = '100%';
+        }
       }
+    } catch (error) {
+      console.error('Error updating visible items:', error);
     }
   }
 
   updateItems(newItems: HTMLElement[]): void {
-    this.items = newItems;
-    const totalHeight = this.items.length * this.itemHeight;
-    this.container.style.height = `${totalHeight}px`;
-    this.updateVisibleItems();
+    if (this.isDestroyed) return;
+    
+    try {
+      this.items = this.validateItems(newItems);
+      const totalHeight = this.items.length * this.itemHeight;
+      this.container.style.height = `${totalHeight}px`;
+      this.updateVisibleItems();
+    } catch (error) {
+      console.error('Error updating items:', error);
+    }
   }
 
   scrollToIndex(index: number): void {
-    const targetScrollTop = index * this.itemHeight;
-    this.container.scrollTo({
-      top: targetScrollTop,
-      behavior: 'smooth'
-    });
+    if (this.isDestroyed) return;
+    
+    try {
+      const safeIndex = Math.max(0, Math.min(index, this.items.length - 1));
+      const targetScrollTop = safeIndex * this.itemHeight;
+      this.container.scrollTo({
+        top: targetScrollTop,
+        behavior: 'smooth'
+      });
+    } catch (error) {
+      console.error('Error scrolling to index:', error);
+    }
   }
 
   destroy(): void {
-    this.container.removeEventListener('scroll', this.handleScroll.bind(this));
+    if (this.isDestroyed) return;
+    
+    try {
+      this.container.removeEventListener('scroll', this.scrollHandler);
+      this.items = [];
+      this.isDestroyed = true;
+    } catch (error) {
+      console.error('Error destroying VirtualScrollManager:', error);
+    }
   }
 }
 
@@ -344,6 +522,8 @@ export class VirtualScrollManager {
  * Performance monitoring utilities
  */
 export class PerformanceMonitor {
+  private static operations = new Map<string, number>();
+
   static getMetrics(): PerformanceMetrics {
     return { ...performanceMetrics };
   }
@@ -352,6 +532,20 @@ export class PerformanceMonitor {
     performanceMetrics.searchTime = 0;
     performanceMetrics.contentLoadTime = 0;
     performanceMetrics.renderTime = 0;
+  }
+
+  static startOperation(operationName: string): void {
+    this.operations.set(operationName, performance.now());
+  }
+
+  static endOperation(operationName: string): number {
+    const startTime = this.operations.get(operationName);
+    if (startTime) {
+      const duration = performance.now() - startTime;
+      this.operations.delete(operationName);
+      return duration;
+    }
+    return 0;
   }
 
   static measureRenderTime<T>(fn: () => T): T {
@@ -390,37 +584,83 @@ export class PerformanceMonitor {
  */
 export class MemoryManager {
   private static readonly MAX_CACHE_SIZE = 20; // Maximum cached sections
-  private static readonly CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  private static readonly CLEANUP_INTERVAL = 2 * 60 * 1000; // 2 minutes (reduced from 5)
+  private static readonly MEMORY_THRESHOLD_MB = 100; // 100MB threshold
   private static cleanupTimer: NodeJS.Timeout | null = null;
+  private static isDestroyed: boolean = false;
 
   static startMemoryManagement(): void {
-    if (this.cleanupTimer) return;
+    if (this.cleanupTimer || this.isDestroyed) return;
 
-    this.cleanupTimer = setInterval(() => {
+    try {
+      this.cleanupTimer = setInterval(() => {
+        this.performCleanup();
+      }, this.CLEANUP_INTERVAL);
+      
+      // Initial cleanup
       this.performCleanup();
-    }, this.CLEANUP_INTERVAL);
+      console.log('Memory management started');
+    } catch (error) {
+      console.error('Error starting memory management:', error);
+    }
   }
 
   static stopMemoryManagement(): void {
-    if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer);
-      this.cleanupTimer = null;
+    if (this.isDestroyed) return;
+    
+    try {
+      if (this.cleanupTimer) {
+        clearInterval(this.cleanupTimer);
+        this.cleanupTimer = null;
+      }
+      console.log('Memory management stopped');
+    } catch (error) {
+      console.error('Error stopping memory management:', error);
     }
   }
 
   private static performCleanup(): void {
-    // Clean up content cache if it's too large
-    if (contentCache.size > this.MAX_CACHE_SIZE) {
-      const keysToDelete = Array.from(contentCache.keys()).slice(0, contentCache.size - this.MAX_CACHE_SIZE);
-      keysToDelete.forEach(key => contentCache.delete(key));
-      console.log(`Cleaned up ${keysToDelete.length} cached content sections`);
-    }
+    if (this.isDestroyed) return;
+    
+    try {
+      // Check if memory usage is high (Chrome only)
+      if (this.isMemoryUsageHigh()) {
+        console.warn('High memory usage detected, performing aggressive cleanup');
+        this.clearAllCaches();
+        return;
+      }
+      
+      // Clean up content cache if it's too large
+      if (contentCache.size > this.MAX_CACHE_SIZE) {
+        const keysToDelete = Array.from(contentCache.keys())
+          .slice(0, Math.ceil(contentCache.size * 0.5)); // Remove 50% of cache instead of just overflow
+        keysToDelete.forEach(key => contentCache.delete(key));
+        console.log(`Cleaned up ${keysToDelete.length} cached content sections`);
+      }
 
-    // Clean up search cache if it's too large
-    if (searchCache.size > OptimizedSearch.getSearchCacheSize()) {
-      OptimizedSearch.clearSearchCache();
-      console.log('Cleaned up search cache');
+      // Clean up search cache if it's too large
+      if (searchCache.size > OptimizedSearch.getSearchCacheSize()) {
+        OptimizedSearch.clearSearchCache();
+        console.log('Cleaned up search cache');
+      }
+    } catch (error) {
+      console.error('Error performing cache cleanup:', error);
     }
+  }
+  
+  static isMemoryUsageHigh(): boolean {
+    // Check if performance.memory is available (Chrome only)
+    if (typeof window !== 'undefined' && window.performance && (window.performance as unknown as { memory: { usedJSHeapSize: number } }).memory) {
+      const memoryInfo = (window.performance as unknown as { memory: { usedJSHeapSize: number } }).memory;
+      const usedHeapSizeMB = memoryInfo.usedJSHeapSize / (1024 * 1024);
+      
+      if (usedHeapSizeMB > this.MEMORY_THRESHOLD_MB) {
+        console.warn(`High memory usage: ${usedHeapSizeMB.toFixed(2)}MB exceeds threshold of ${this.MEMORY_THRESHOLD_MB}MB`);
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   static getMemoryUsage(): {
@@ -436,9 +676,46 @@ export class MemoryManager {
   }
 
   static clearAllCaches(): void {
-    LazyContentLoader.clearCache();
-    OptimizedSearch.clearSearchCache();
-    console.log('All caches cleared');
+    try {
+      LazyContentLoader.clearCache();
+      OptimizedSearch.clearSearchCache();
+      console.log('All caches cleared');
+    } catch (error) {
+      console.error('Error clearing caches:', error);
+    }
+  }
+  
+  static performCacheCleanup(): void {
+    try {
+      // Clean up content cache if it's too large
+      if (contentCache.size > this.MAX_CACHE_SIZE) {
+        const keysToDelete = Array.from(contentCache.keys())
+          .slice(0, Math.ceil(contentCache.size * 0.3)); // Remove 30% of cache
+        keysToDelete.forEach(key => contentCache.delete(key));
+        console.log(`Cleaned up ${keysToDelete.length} cached content sections`);
+      }
+
+      // Clean up search cache if it's too large
+      if (searchCache.size > OptimizedSearch.getSearchCacheSize()) {
+        OptimizedSearch.clearSearchCache();
+        console.log('Cleaned up search cache');
+      }
+    } catch (error) {
+      console.error('Error performing cache cleanup:', error);
+    }
+  }
+  
+  static destroy(): void {
+    if (this.isDestroyed) return;
+    
+    try {
+      this.stopMemoryManagement();
+      this.clearAllCaches();
+      this.isDestroyed = true;
+      console.log('Memory manager destroyed');
+    } catch (error) {
+      console.error('Error destroying memory manager:', error);
+    }
   }
 }
 

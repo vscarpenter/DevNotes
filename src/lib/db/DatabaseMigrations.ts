@@ -37,6 +37,7 @@ export class DatabaseMigrations {
       stores: {
         notes: '++id, title, content, folderId, createdAt, updatedAt, [folderId+updatedAt]',
         folders: '++id, name, parentId, createdAt, updatedAt, [parentId+name]',
+        tags: '++id, name, color, createdAt, usageCount',
         settings: '++key, value',
         searchIndex: '++noteId, lastIndexed'
       }

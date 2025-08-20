@@ -3,10 +3,10 @@
  * Requirements: 1.2, 1.3, 3.4
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { ChevronDown, ChevronRight, BookOpen, Wrench, Zap, AlertTriangle } from 'lucide-react';
 import { useUserGuideStore } from '../../stores/userGuideStore';
-import guideContent from '../../content/userGuide/guideContent';
+import guideContent, { loadGuideContent, populateGuideContent } from '../../content/userGuide/guideContent';
 import { GuideCategory, GuideSection } from '../../types/userGuide';
 
 interface NavigationSection {
@@ -30,14 +30,32 @@ const categoryConfig: Record<GuideCategory, { title: string; icon: React.Compone
 
 export const UserGuideNavigation: React.FC<UserGuideNavigationProps> = ({ className = '' }) => {
   const { currentSection, navigateToSection } = useUserGuideStore();
+  const [isContentLoaded, setIsContentLoaded] = useState(false);
   
   // Track which sections are expanded
   const [expandedSections, setExpandedSections] = useState<Set<GuideCategory>>(
     new Set(['getting-started']) // Start with getting-started expanded
   );
 
+  // Load guide content on mount
+  useEffect(() => {
+    const loadContent = async () => {
+      try {
+        const content = await loadGuideContent();
+        populateGuideContent(content);
+        setIsContentLoaded(true);
+      } catch (error) {
+        console.error('Failed to load guide content:', error);
+      }
+    };
+
+    loadContent();
+  }, []);
+
   // Organize content by category
   const navigationSections = useMemo((): NavigationSection[] => {
+    if (!isContentLoaded) return [];
+    
     return Object.entries(guideContent.sections).map(([category, sections]) => {
       const categoryKey = category as GuideCategory;
       const config = categoryConfig[categoryKey];
@@ -50,10 +68,11 @@ export const UserGuideNavigation: React.FC<UserGuideNavigationProps> = ({ classN
         isExpanded: expandedSections.has(categoryKey),
       };
     });
-  }, [expandedSections]);
+  }, [expandedSections, isContentLoaded]);
 
   // Calculate progress for each category
   const getCategoryProgress = (category: GuideCategory): number => {
+    if (!isContentLoaded) return 0;
     const sections = Object.values(guideContent.sections[category]);
     const currentIndex = sections.findIndex(section => section.id === currentSection);
     
@@ -63,6 +82,7 @@ export const UserGuideNavigation: React.FC<UserGuideNavigationProps> = ({ classN
 
   // Get total progress across all sections
   const getTotalProgress = (): number => {
+    if (!isContentLoaded) return 0;
     const allSections = Object.values(guideContent.sections).flatMap(sections => Object.values(sections));
     const currentIndex = allSections.findIndex(section => section.id === currentSection);
     
@@ -137,9 +157,24 @@ export const UserGuideNavigation: React.FC<UserGuideNavigationProps> = ({ classN
 
   // Check if a category contains the current section
   const isCategoryActive = (category: GuideCategory): boolean => {
+    if (!isContentLoaded) return false;
     const sections = Object.values(guideContent.sections[category]);
     return sections.some(section => section.id === currentSection);
   };
+
+  // Loading state
+  if (!isContentLoaded) {
+    return (
+      <nav className={`flex flex-col h-full ${className}`} role="navigation" aria-label="User guide navigation">
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-500 dark:text-gray-400">Loading navigation...</p>
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className={`flex flex-col h-full ${className}`} role="navigation" aria-label="User guide navigation">

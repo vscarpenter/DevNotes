@@ -1,108 +1,63 @@
-import { GuideContent } from '../../types/userGuide';
+import { GuideContent, GuideSection } from '../../types/userGuide';
 
-// This will be replaced with actual markdown content in task 2
+// Import content loader for actual markdown content
+export { loadGuideContent } from './contentLoader';
+
+// Create placeholder sections with proper structure
+const createPlaceholderSection = (id: string, title: string): GuideSection => ({
+  id,
+  title,
+  content: 'Loading...',
+  searchKeywords: [],
+  category: id.split('/')[0] as any,
+});
+
+// Function to get content synchronously (will be populated by the components)
 const guideContent: GuideContent = {
   sections: {
     'getting-started': {
-      'welcome': {
-        id: 'getting-started/welcome',
-        title: 'Welcome to DevNotes',
-        content: 'Welcome to DevNotes - your developer-focused note-taking application.',
-        searchKeywords: ['welcome', 'introduction', 'getting started', 'overview'],
-        category: 'getting-started'
-      },
-      'first-note': {
-        id: 'getting-started/first-note',
-        title: 'Creating Your First Note',
-        content: 'Learn how to create and edit your first note in DevNotes.',
-        searchKeywords: ['first note', 'create', 'new note', 'editor'],
-        category: 'getting-started'
-      },
-      'organizing-notes': {
-        id: 'getting-started/organizing-notes',
-        title: 'Organizing Your Notes',
-        content: 'Discover how to organize your notes using folders and tags.',
-        searchKeywords: ['organize', 'folders', 'structure', 'hierarchy'],
-        category: 'getting-started'
-      }
+      'welcome': createPlaceholderSection('getting-started/welcome', 'Welcome to DevNotes'),
+      'first-note': createPlaceholderSection('getting-started/first-note', 'Creating Your First Note'),
+      'organizing-notes': createPlaceholderSection('getting-started/organizing-notes', 'Organizing Your Notes'),
     },
     'features': {
-      'markdown-editor': {
-        id: 'features/markdown-editor',
-        title: 'Markdown Editor',
-        content: 'Master the markdown editor with syntax highlighting and live preview.',
-        searchKeywords: ['markdown', 'editor', 'syntax', 'preview', 'formatting'],
-        category: 'features'
-      },
-      'search': {
-        id: 'features/search',
-        title: 'Search Functionality',
-        content: 'Learn how to effectively search through your notes and content.',
-        searchKeywords: ['search', 'find', 'filter', 'query'],
-        category: 'features'
-      },
-      'export-import': {
-        id: 'features/export-import',
-        title: 'Export & Import',
-        content: 'Export your notes and import from other applications.',
-        searchKeywords: ['export', 'import', 'backup', 'transfer'],
-        category: 'features'
-      },
-      'keyboard-shortcuts': {
-        id: 'features/keyboard-shortcuts',
-        title: 'Keyboard Shortcuts',
-        content: 'Speed up your workflow with keyboard shortcuts.',
-        searchKeywords: ['keyboard', 'shortcuts', 'hotkeys', 'productivity'],
-        category: 'features'
-      }
+      'markdown-editor': createPlaceholderSection('features/markdown-editor', 'Markdown Editor'),
+      'search': createPlaceholderSection('features/search', 'Search Functionality'),
+      'export-import': createPlaceholderSection('features/export-import', 'Export & Import'),
+      'keyboard-shortcuts': createPlaceholderSection('features/keyboard-shortcuts', 'Keyboard Shortcuts'),
     },
     'advanced': {
-      'power-user-tips': {
-        id: 'advanced/power-user-tips',
-        title: 'Power User Tips',
-        content: 'Advanced tips and tricks for power users.',
-        searchKeywords: ['power user', 'advanced', 'tips', 'tricks', 'productivity'],
-        category: 'advanced'
-      },
-      'customization': {
-        id: 'advanced/customization',
-        title: 'Customization Options',
-        content: 'Customize DevNotes to fit your workflow.',
-        searchKeywords: ['customize', 'settings', 'preferences', 'configuration'],
-        category: 'advanced'
-      },
-      'data-management': {
-        id: 'advanced/data-management',
-        title: 'Data Management',
-        content: 'Understanding how your data is stored and managed.',
-        searchKeywords: ['data', 'storage', 'indexeddb', 'management'],
-        category: 'advanced'
-      }
+      'power-user-tips': createPlaceholderSection('advanced/power-user-tips', 'Power User Tips'),
+      'customization': createPlaceholderSection('advanced/customization', 'Customization Options'),
+      'data-management': createPlaceholderSection('advanced/data-management', 'Data Management'),
     },
     'troubleshooting': {
-      'common-issues': {
-        id: 'troubleshooting/common-issues',
-        title: 'Common Issues',
-        content: 'Solutions to common problems and issues.',
-        searchKeywords: ['issues', 'problems', 'troubleshooting', 'help'],
-        category: 'troubleshooting'
-      },
-      'performance': {
-        id: 'troubleshooting/performance',
-        title: 'Performance Optimization',
-        content: 'Tips for optimizing DevNotes performance.',
-        searchKeywords: ['performance', 'speed', 'optimization', 'slow'],
-        category: 'troubleshooting'
-      },
-      'data-recovery': {
-        id: 'troubleshooting/data-recovery',
-        title: 'Data Recovery',
-        content: 'How to recover lost or corrupted data.',
-        searchKeywords: ['recovery', 'lost data', 'backup', 'restore'],
-        category: 'troubleshooting'
-      }
-    }
+      'common-issues': createPlaceholderSection('troubleshooting/common-issues', 'Common Issues'),
+      'performance': createPlaceholderSection('troubleshooting/performance', 'Performance Optimization'),
+      'data-recovery': createPlaceholderSection('troubleshooting/data-recovery', 'Data Recovery'),
+    },
   }
+};
+
+// Function to populate the synchronous content object
+export const populateGuideContent = (content: GuideContent) => {
+  if (!content || !content.sections) {
+    console.error('populateGuideContent: Invalid content structure', content);
+    return;
+  }
+
+  // Replace placeholder content with actual loaded content
+  Object.keys(content.sections).forEach(categoryKey => {
+    const category = categoryKey as keyof typeof content.sections;
+    const categoryContent = content.sections[category];
+    
+    if (categoryContent && typeof categoryContent === 'object') {
+      Object.keys(categoryContent).forEach(sectionKey => {
+        const section = sectionKey as keyof typeof categoryContent;
+        (guideContent.sections[category] as any)[section] = categoryContent[section];
+      });
+    }
+  });
 };
 
 export default guideContent;

@@ -46,7 +46,8 @@ export const useAppStore = create<AppStore>()(
           useFolderStore.getState().loadFolders()
         ]);
 
-        // Update recent notes in search store
+        // Initialize search engine and update recent notes
+        await useSearchStore.getState().initializeSearchEngine();
         const recentNotes = useNoteStore.getState().getRecentNotes(20);
         useSearchStore.getState().updateRecentNotes(recentNotes.map(note => note.id));
 
@@ -56,17 +57,19 @@ export const useAppStore = create<AppStore>()(
           sessionStorage.removeItem('pwa-action');
           
           switch (pwaAction) {
-            case 'new-note':
+            case 'new-note': {
               // Create a new note in the root folder or selected folder
               const selectedFolderId = useFolderStore.getState().selectedFolderId;
               const targetFolderId = selectedFolderId || 'root';
               await get().createNoteInFolder(targetFolderId, 'New Note');
               break;
+            }
               
-            case 'search':
+            case 'search': {
               // Open search interface
               useUIStore.getState().setSearchOpen(true);
               break;
+            }
           }
         }
 

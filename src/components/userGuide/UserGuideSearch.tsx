@@ -10,7 +10,7 @@ import { useUserGuideStore } from '../../stores/userGuideStore';
 import { GuideSection } from '../../types/userGuide';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import guideContent from '../../content/userGuide/guideContent';
+import guideContent, { loadGuideContent, populateGuideContent } from '../../content/userGuide/guideContent';
 import { OptimizedSearch, PerformanceMonitor } from '../../lib/userGuide/performanceOptimizations';
 
 interface UserGuideSearchProps {
@@ -49,26 +49,38 @@ export const UserGuideSearch: React.FC<UserGuideSearchProps> = ({
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [isContentLoaded, setIsContentLoaded] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const fuseRef = useRef<Fuse<GuideSection>>();
 
-  // Initialize Fuse.js instance with all guide sections
+  // Load guide content and initialize Fuse.js instance
   useEffect(() => {
-    const allSections: GuideSection[] = [];
-    
-    Object.values(guideContent.sections).forEach(category => {
-      Object.values(category).forEach(section => {
-        allSections.push(section);
-      });
-    });
+    const loadContentAndInitializeSearch = async () => {
+      try {
+        const content = await loadGuideContent();
+        populateGuideContent(content);
+        
+        const allSections: GuideSection[] = [];
+        Object.values(content.sections).forEach(category => {
+          Object.values(category).forEach(section => {
+            allSections.push(section);
+          });
+        });
 
-    fuseRef.current = new Fuse(allSections, fuseOptions);
+        fuseRef.current = new Fuse(allSections, fuseOptions);
+        setIsContentLoaded(true);
+      } catch (error) {
+        console.error('Failed to load guide content for search:', error);
+      }
+    };
+
+    loadContentAndInitializeSearch();
   }, []);
 
   // Optimized search function with caching
   const performSearch = useCallback(async (query: string) => {
-    if (!fuseRef.current) return;
+    if (!fuseRef.current || !isContentLoaded) return;
 
     if (!query.trim()) {
       setSearchResults([]);

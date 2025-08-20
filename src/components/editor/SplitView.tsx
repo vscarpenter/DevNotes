@@ -4,7 +4,7 @@
  * Requirements: 4.3, 4.5
  */
 
-import React, { useRef, useCallback, useState, useEffect } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import { MarkdownEditor } from './MarkdownEditor';
 import { PreviewPane } from './PreviewPane';
 import { useUIStore } from '../../stores/uiStore';
@@ -32,13 +32,13 @@ export const SplitView: React.FC<SplitViewProps> = ({
 
   // Handle synchronized scrolling from editor to preview
   const handleEditorScroll = useCallback((scrollTop: number, scrollHeight: number) => {
-    if (!isScrollSyncing || !previewRef.current || !editorRef.current) return;
+    if (!isScrollSyncing || !previewRef.current) return;
     
-    const editorClientHeight = editorRef.current.clientHeight || 1;
-    const scrollRatio = scrollTop / (scrollHeight - editorClientHeight);
+    const editorClientHeight = scrollHeight - scrollTop;
+    const scrollRatio = scrollTop / Math.max(1, scrollHeight - editorClientHeight);
     const previewScrollHeight = previewRef.current.scrollHeight;
     const previewClientHeight = previewRef.current.clientHeight;
-    const targetScrollTop = scrollRatio * (previewScrollHeight - previewClientHeight);
+    const targetScrollTop = scrollRatio * Math.max(0, previewScrollHeight - previewClientHeight);
     
     previewRef.current.scrollTop = Math.max(0, targetScrollTop);
   }, [isScrollSyncing]);
@@ -137,6 +137,7 @@ export const SplitView: React.FC<SplitViewProps> = ({
             <MarkdownEditor 
               noteId={noteId}
               className="h-full"
+              onScroll={handleEditorScroll}
             />
           </div>
         )}

@@ -129,7 +129,7 @@ export const useNoteStore = create<NoteState>()(
         
         if (result.success) {
           set(state => {
-            const { [id]: deleted, ...remainingNotes } = state.notes;
+            const { [id]: _deleted, ...remainingNotes } = state.notes;
             return {
               notes: remainingNotes,
               selectedNoteId: state.selectedNoteId === id ? null : state.selectedNoteId,

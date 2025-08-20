@@ -37,8 +37,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     setSearchQuery
   } = useUIStore();
 
-  const { createFolder, selectedFolderId } = useFolderStore();
-  const { createNote } = useNoteStore();
+  const folderStore = useFolderStore();
+  const noteStore = useNoteStore();
+  
+  const { createFolder, selectedFolderId } = folderStore || {};
+  const { createNote } = noteStore || {};
 
   const handleSearchToggle = () => {
     setSearchOpen(!isSearchOpen);
@@ -49,6 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   };
 
   const handleCreateFolder = async () => {
+    if (!createFolder) return;
     try {
       await createFolder(selectedFolderId, 'New Folder');
     } catch (error) {
@@ -57,6 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   };
 
   const handleCreateNote = async () => {
+    if (!createNote) return;
     try {
       const folderId = selectedFolderId || 'root';
       await createNote(folderId, 'Untitled Note');

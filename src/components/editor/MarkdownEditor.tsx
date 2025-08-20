@@ -6,7 +6,7 @@
 
 import React, { useEffect, useRef, useCallback } from 'react';
 import { EditorView, keymap } from '@codemirror/view';
-import { EditorState, Compartment } from '@codemirror/state';
+import { EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { defaultKeymap, indentWithTab } from '@codemirror/commands';
@@ -19,11 +19,13 @@ import { EditorToolbar } from './EditorToolbar';
 interface MarkdownEditorProps {
   noteId: string;
   className?: string;
+  onScroll?: (scrollTop: number, scrollHeight: number) => void;
 }
 
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ 
   noteId, 
-  className = '' 
+  className = '',
+  onScroll
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -155,6 +157,18 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       }
     }));
 
+    // Add scroll tracking if onScroll is provided
+    if (onScroll) {
+      extensions.push(EditorView.domEventHandlers({
+        scroll: (event: Event) => {
+          const target = event.target as HTMLElement;
+          if (target.classList.contains('cm-scroller')) {
+            onScroll(target.scrollTop, target.scrollHeight);
+          }
+        }
+      }));
+    }
+
     // Add theme
     extensions.push(EditorView.theme({
       '&': {
@@ -194,7 +208,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
 
     return extensions;
-  }, [isDarkMode, showLineNumbers, wordWrap, fontSize, handleContentChange, forceSave, insertFormatting]);
+  }, [isDarkMode, showLineNumbers, wordWrap, fontSize, handleContentChange, forceSave, insertFormatting, setCursorPosition, setSelectionInfo, onScroll]);
 
   // Toolbar action handlers
   const handleBold = useCallback(() => insertFormatting('**', '**'), [insertFormatting]);
@@ -247,7 +261,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       }
       viewRef.current = null;
     };
-  }, [note?.id]);
+  }, [note?.id, createExtensions, note]);
 
   // Update editor when note content changes externally
   useEffect(() => {
@@ -264,7 +278,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         }
       });
     }
-  }, [note?.content]);
+  }, [note?.content, note]);
 
   // Recreate editor when settings change
   useEffect(() => {
@@ -285,7 +299,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     });
 
     viewRef.current = newView;
-  }, [isDarkMode, showLineNumbers, wordWrap, fontSize]);
+  }, [isDarkMode, showLineNumbers, wordWrap, fontSize, createExtensions, note]);
 
   if (!note) {
     return (

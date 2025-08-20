@@ -126,13 +126,17 @@ export const MainPanel: React.FC<MainPanelProps> = ({ children, className }) => 
     selectionInfo
   } = useUIStore();
 
-  const { selectedNoteId, getNote, updateNote } = useNoteStore();
-  const { getFolder } = useFolderStore();
-  const { openGuide } = useUserGuideStore();
+  const noteStore = useNoteStore();
+  const folderStore = useFolderStore();
+  const userGuideStore = useUserGuideStore();
+  
+  const { selectedNoteId, getNote, updateNote } = noteStore || {};
+  const { getFolder } = folderStore || {};
+  const { openGuide } = userGuideStore || {};
 
   // Get current note and folder information
-  const currentNote = selectedNoteId ? getNote(selectedNoteId) : null;
-  const currentFolder = currentNote ? getFolder(currentNote.folderId) : null;
+  const currentNote = selectedNoteId && getNote ? getNote(selectedNoteId) : null;
+  const currentFolder = currentNote && getFolder ? getFolder(currentNote.folderId) : null;
 
   // Calculate word count and reading time
   const wordCount = useMemo(() => {
@@ -224,7 +228,7 @@ export const MainPanel: React.FC<MainPanelProps> = ({ children, className }) => 
                 <EditableNoteTitle 
                   noteId={currentNote.id}
                   title={currentNote.title}
-                  onUpdate={(newTitle) => updateNote(currentNote.id, { title: newTitle })}
+                  onUpdate={(newTitle) => updateNote?.(currentNote.id, { title: newTitle })}
                 />
               ) : (
                 <div className="font-medium text-foreground truncate">

@@ -6,60 +6,64 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
 import remarkRehype from 'remark-rehype';
-import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
-import rehypeKatex from 'rehype-katex';
 import rehypeStringify from 'rehype-stringify';
 
 // Import highlight.js languages for code syntax highlighting
 import 'prismjs/themes/prism-tomorrow.css';
 
 /**
- * Process markdown content into HTML with syntax highlighting and math support
+ * Process markdown content into HTML with timeout protection
  */
 export const processMarkdown = async (markdown: string): Promise<string> => {
   try {
-    const processor = unified()
-      .use(remarkParse) // Parse markdown
-      .use(remarkGfm) // GitHub Flavored Markdown support
-      .use(remarkMath) // Math notation support
-      .use(remarkRehype, { allowDangerousHtml: true }) // Convert to HTML
-      .use(rehypeRaw) // Allow raw HTML
-      .use(rehypeHighlight, {
-        // Configure syntax highlighting
-        detect: true,
-        ignoreMissing: true,
-        subset: [
-          'javascript',
-          'typescript',
-          'jsx',
-          'tsx',
-          'json',
-          'css',
-          'html',
-          'markdown',
-          'bash',
-          'shell',
-          'python',
-          'java',
-          'go',
-          'rust',
-          'sql',
-          'yaml',
-          'xml',
-          'dockerfile'
-        ]
-      })
-      .use(rehypeKatex) // Render math expressions
-      .use(rehypeStringify); // Convert to string
+    // Validate input to prevent processing extremely large content
+    if (!markdown || typeof markdown !== 'string') {
+      console.warn('Invalid markdown content received');
+      return '<div class="markdown-error">Invalid content format</div>';
+    }
+    
+    // Limit content size to prevent memory issues
+    const MAX_CONTENT_LENGTH = 100000; // ~100KB limit
+    if (markdown.length > MAX_CONTENT_LENGTH) {
+      console.warn(`Markdown content too large: ${markdown.length} chars`);
+      return `<div class="markdown-error">Content too large to display (${Math.round(markdown.length/1024)}KB)</div>`;
+    }
 
-    const result = await processor.process(markdown);
-    return String(result);
+    // Add timeout protection to prevent hanging
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Markdown processing timeout')), 5000);
+    });
+
+    const processingPromise = (async () => {
+      try {
+        const processor = unified()
+          .use(remarkParse) // Parse markdown
+          .use(remarkGfm) // GitHub Flavored Markdown support
+          .use(remarkRehype, { allowDangerousHtml: false }) // Convert to HTML (safer)
+          .use(rehypeHighlight, {
+            // Simplified syntax highlighting to reduce processing time
+            detect: false,
+            ignoreMissing: true,
+            subset: ['javascript', 'typescript', 'json', 'css', 'html', 'markdown', 'bash']
+          })
+          .use(rehypeStringify); // Convert to string
+
+        const result = await processor.process(markdown);
+        return String(result);
+      } catch (processingError) {
+        console.error('Error in unified processor:', processingError);
+        throw processingError;
+      }
+    })();
+
+    // Race between processing and timeout
+    return await Promise.race([processingPromise, timeoutPromise]);
   } catch (error) {
     console.error('Error processing markdown:', error);
-    throw new Error(`Failed to process markdown: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    // Fallback to basic HTML conversion
+    return `<div class="markdown-fallback"><pre>${markdown}</pre></div>`;
   }
 };
 

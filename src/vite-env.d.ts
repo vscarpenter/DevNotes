@@ -7,7 +7,7 @@ declare module 'virtual:pwa-register/react' {
     onNeedRefresh?: () => void;
     onOfflineReady?: () => void;
     onRegistered?: (registration: ServiceWorkerRegistration | undefined) => void;
-    onRegisterError?: (error: any) => void;
+    onRegisterError?: (error: Error) => void;
   }
 
   export function useRegisterSW(options?: RegisterSWOptions): {
@@ -15,4 +15,15 @@ declare module 'virtual:pwa-register/react' {
     needRefresh: [boolean, (value: boolean) => void];
     updateServiceWorker: (reloadPage?: boolean) => Promise<void>;
   };
+}
+
+// Declare support for importing markdown files as raw text
+declare module '*.md?raw' {
+  const content: string;
+  export default content;
+}
+
+declare module '*.md' {
+  const content: string;
+  export default content;
 }

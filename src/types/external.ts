@@ -22,29 +22,42 @@ export interface MermaidConfig {
 }
 
 export interface PrismGrammar {
-  [key: string]: any;
+  [key: string]: RegExp | string | PrismGrammar | Array<RegExp | string | PrismGrammar>;
+}
+
+export interface UnifiedPlugin {
+  (options?: Record<string, unknown>): void;
 }
 
 export interface UnifiedProcessor {
-  use(plugin: any, options?: any): UnifiedProcessor;
+  use(plugin: UnifiedPlugin, options?: Record<string, unknown>): UnifiedProcessor;
   process(value: string): Promise<UnifiedVFile>;
   processSync(value: string): UnifiedVFile;
 }
 
+export interface UnifiedMessage {
+  message: string;
+  line?: number;
+  column?: number;
+  source?: string;
+  ruleId?: string;
+  fatal?: boolean;
+}
+
 export interface UnifiedVFile {
   contents: string;
-  data: Record<string, any>;
-  messages: any[];
+  data: Record<string, unknown>;
+  messages: UnifiedMessage[];
 }
 
 // React DnD types (if used for drag and drop)
 export interface DragSourceMonitor {
   isDragging(): boolean;
-  getDropResult(): any;
+  getDropResult(): Record<string, unknown> | null;
 }
 
 export interface DropTargetMonitor {
   isOver(): boolean;
   canDrop(): boolean;
-  getItem(): any;
+  getItem(): Record<string, unknown> | null;
 }

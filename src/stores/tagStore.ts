@@ -147,7 +147,7 @@ export const useTagStore = create<TagState>()(
         
         if (result.success) {
           set(state => {
-            const { [id]: deleted, ...remainingTags } = state.tags;
+            const { [id]: _deleted, ...remainingTags } = state.tags;
             return {
               tags: remainingTags,
               isLoading: false

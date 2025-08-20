@@ -4,36 +4,40 @@
  */
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Copy, Check, ExternalLink } from 'lucide-react';
+import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { useUserGuideStore } from '../../stores/userGuideStore';
-import { loadGuideContent, getSectionById } from '../../content/userGuide/contentLoader';
-import { GuideContent, GuideSection } from '../../types/userGuide';
+
+import { GuideSection } from '../../types/userGuide';
 import { Button } from '../ui/button';
 import { processMarkdown } from '../../lib/utils/markdownProcessor';
 import { 
   LazyContentLoader, 
   PerformanceMonitor, 
-  VirtualScrollManager 
+  VirtualScrollManager,
+  MemoryManager 
 } from '../../lib/userGuide/performanceOptimizations';
+import { UserGuideErrorBoundary } from './UserGuideErrorBoundary';
 
 interface UserGuideContentProps {
   className?: string;
+  onError?: (error: Error) => void;
 }
 
 interface CopyState {
   [key: string]: boolean;
 }
 
-export const UserGuideContent: React.FC<UserGuideContentProps> = ({ className = '' }) => {
+export const UserGuideContent: React.FC<UserGuideContentProps> = ({ className = '', onError }) => {
   const { currentSection, navigateToSection } = useUserGuideStore();
-  const [guideContent, setGuideContent] = useState<GuideContent | null>(null);
   const [currentSectionData, setCurrentSectionData] = useState<GuideSection | null>(null);
   const [processedContent, setProcessedContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copyStates, setCopyStates] = useState<CopyState>({});
+  const [memoryWarning, setMemoryWarning] = useState<boolean>(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const virtualScrollRef = useRef<VirtualScrollManager | null>(null);
+  const memoryCheckIntervalRef = useRef<number | null>(null);
 
   // Helper function to get adjacent sections for preloading
   const getAdjacentSections = useCallback((sectionId: string): string[] => {
@@ -66,44 +70,68 @@ export const UserGuideContent: React.FC<UserGuideContentProps> = ({ className = 
     return adjacent;
   }, []);
 
-  // Load guide content on mount (lazy loading)
+  // Memory management - check memory usage and clear caches if needed
   useEffect(() => {
-    const loadContent = async () => {
+    // Start memory monitoring
+    memoryCheckIntervalRef.current = window.setInterval(() => {
       try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Use performance monitoring
-        await PerformanceMonitor.measureAsyncRenderTime(async () => {
-          const content = await loadGuideContent();
-          setGuideContent(content);
-        });
-        
-        // Preload adjacent sections for better UX
-        if (currentSection) {
-          const adjacentSections = getAdjacentSections(currentSection);
-          adjacentSections.forEach(sectionId => {
-            LazyContentLoader.preloadSection(sectionId);
-          });
+        // Check if memory usage is high
+        if (MemoryManager.isMemoryUsageHigh()) {
+          console.warn('Memory usage is high in UserGuideContent, clearing caches');
+          setMemoryWarning(true);
+          MemoryManager.clearAllCaches();
+          LazyContentLoader.clearCache();
+          
+          // Reset warning after 5 seconds
+          setTimeout(() => setMemoryWarning(false), 5000);
         }
       } catch (err) {
-        console.error('Failed to load guide content:', err);
-        setError('Failed to load guide content. Please try again.');
-      } finally {
-        setIsLoading(false);
-        PerformanceMonitor.logPerformanceWarnings();
+        console.error('Error in memory management:', err);
       }
+    }, 30000); // Check every 30 seconds
+    
+    // Cleanup on unmount
+    return () => {
+      if (memoryCheckIntervalRef.current) {
+        window.clearInterval(memoryCheckIntervalRef.current);
+        memoryCheckIntervalRef.current = null;
+      }
+      
+      // Cancel any pending lazy loads
+      LazyContentLoader.cancelLoading();
+      
+      // Clear caches on unmount
+      MemoryManager.clearAllCaches();
+      LazyContentLoader.clearCache();
     };
-
-    loadContent();
-  }, [currentSection]);
+  }, []);
+  
+  // Preload adjacent sections when current section changes (lazy loading)
+  useEffect(() => {
+    if (currentSection) {
+      const adjacentSections = getAdjacentSections(currentSection);
+      // Limit preloading to reduce memory pressure
+      adjacentSections.slice(0, 1).forEach(sectionId => {
+        LazyContentLoader.queueSectionForPreload(sectionId);
+      });
+    }
+    
+    // Cancel any pending loads when section changes
+    return () => {
+      LazyContentLoader.cancelLoading();
+    };
+  }, [currentSection, getAdjacentSections]);
 
   // Update current section data when section changes (with lazy loading)
   useEffect(() => {
+    const abortController = new AbortController();
+    const signal = abortController.signal;
+    
     const loadSectionData = async () => {
       if (!currentSection) {
         setCurrentSectionData(null);
         setProcessedContent('');
+        setIsLoading(false);
         return;
       }
 
@@ -111,39 +139,145 @@ export const UserGuideContent: React.FC<UserGuideContentProps> = ({ className = 
         setIsLoading(true);
         setError(null);
 
-        // Use lazy loading for section content
-        const sectionData = await LazyContentLoader.loadSection(currentSection);
+        // Use lazy loading for section content with timeout
+        const loadTimeout = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Section loading timeout')), 5000);
+        });
+
+        // Wrap in try-catch to handle potential errors in LazyContentLoader
+        let sectionData;
+        try {
+          sectionData = await Promise.race([
+            LazyContentLoader.loadSection(currentSection),
+            loadTimeout
+          ]);
+          
+          // Check if operation was aborted
+          if (signal.aborted) {
+            console.log('Section loading aborted');
+            return;
+          }
+        } catch (loadError) {
+          console.error('Error in LazyContentLoader:', loadError);
+          if (signal.aborted) return;
+          
+          // Report error to parent component if provided
+          if (onError && loadError instanceof Error) {
+            onError(loadError);
+          }
+          
+          throw new Error(`Failed to load section: ${loadError instanceof Error ? loadError.message : 'Unknown error'}`);
+        }
+        
+        // Check if operation was aborted before updating state
+        if (signal.aborted) return;
         setCurrentSectionData(sectionData);
 
         if (sectionData) {
-          // Process markdown content with performance monitoring
-          await PerformanceMonitor.measureAsyncRenderTime(async () => {
+          try {
+            // Process markdown content with memory monitoring
+            PerformanceMonitor.startOperation('processMarkdown');
             const html = await processMarkdown(sectionData.content);
+            PerformanceMonitor.endOperation('processMarkdown');
+            
+            // Check if operation was aborted before updating state
+            if (signal.aborted) return;
             setProcessedContent(html);
-          });
+          } catch (processError) {
+            console.error('Error processing markdown:', processError);
+            if (signal.aborted) return;
+            
+            // Report error to parent component if provided
+            if (onError && processError instanceof Error) {
+              onError(processError);
+            }
+            
+            throw new Error(`Failed to process content: ${processError instanceof Error ? processError.message : 'Unknown error'}`);
+          }
         }
       } catch (err) {
         console.error('Failed to load section data:', err);
+        if (signal.aborted) return;
+        
         setError(`Failed to load section: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        setProcessedContent('');
+        setProcessedContent('<div class="error-fallback">Failed to load content. Please try refreshing the page or select a different section.</div>');
+        
+        // Clear caches if we encounter an error to free up memory
+        LazyContentLoader.clearCache();
+        MemoryManager.performCacheCleanup();
       } finally {
-        setIsLoading(false);
-        PerformanceMonitor.logPerformanceWarnings();
+        if (!signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadSectionData();
-  }, [currentSection]);
+    
+    // Cleanup function to abort any pending operations when component unmounts or section changes
+    return () => {
+      abortController.abort();
+      // Clear virtual scroll manager if it exists
+      if (virtualScrollRef.current) {
+        virtualScrollRef.current.destroy();
+        virtualScrollRef.current = null;
+      }
+    };
+  }, [currentSection, onError]);
 
   // Smooth scroll to top when section changes
   useEffect(() => {
     if (contentRef.current && typeof contentRef.current.scrollTo === 'function') {
-      contentRef.current.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
+      try {
+        contentRef.current.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      } catch (err) {
+        console.error('Error scrolling to top:', err);
+        // Fallback to instant scroll if smooth scroll fails
+        try {
+          contentRef.current.scrollTo(0, 0);
+        } catch (fallbackErr) {
+          console.error('Fallback scroll also failed:', fallbackErr);
+        }
+      }
     }
   }, [currentSection]);
+  
+  // Initialize virtual scroll manager when content is loaded
+  useEffect(() => {
+    if (contentRef.current && processedContent && !isLoading) {
+      try {
+        // Destroy previous instance if it exists
+        if (virtualScrollRef.current) {
+          virtualScrollRef.current.destroy();
+        }
+        
+        // Create new virtual scroll manager with memory limits
+        virtualScrollRef.current = new VirtualScrollManager({
+          container: contentRef.current,
+          items: [],
+          itemHeight: 50,
+          maxItemsLimit: 100 // Limit to prevent memory issues
+        });
+      } catch (err) {
+        console.error('Failed to initialize virtual scroll:', err);
+        // Report error to parent if provided
+        if (onError && err instanceof Error) {
+          onError(err);
+        }
+      }
+    }
+    
+    return () => {
+      // Clean up virtual scroll manager
+      if (virtualScrollRef.current) {
+        virtualScrollRef.current.destroy();
+        virtualScrollRef.current = null;
+      }
+    };
+  }, [processedContent, isLoading, onError]);
 
   // Copy to clipboard functionality
   const copyToClipboard = useCallback(async (text: string, codeId: string) => {
@@ -308,7 +442,7 @@ export const UserGuideContent: React.FC<UserGuideContentProps> = ({ className = 
       <div className={`flex items-center justify-center h-full ${className}`}>
         <div className="text-center max-w-md">
           <div className="text-red-500 mb-4">
-            <ExternalLink className="w-12 h-12 mx-auto" />
+            <AlertTriangle className="w-12 h-12 mx-auto" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
             Content Unavailable
@@ -316,13 +450,39 @@ export const UserGuideContent: React.FC<UserGuideContentProps> = ({ className = 
           <p className="text-gray-500 dark:text-gray-400 mb-4">
             {error}
           </p>
-          <Button
-            onClick={() => window.location.reload()}
-            variant="outline"
-            size="sm"
-          >
-            Retry
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button
+              onClick={() => {
+                // Clear caches before retrying
+                LazyContentLoader.clearCache();
+                MemoryManager.clearAllCaches();
+                setError(null);
+                setIsLoading(true);
+                // Force reload current section
+                if (currentSection) {
+                  navigateToSection(currentSection);
+                }
+              }}
+              variant="default"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Try Again
+            </Button>
+            <Button
+              onClick={() => {
+                // Clear caches and navigate to welcome page
+                LazyContentLoader.clearCache();
+                MemoryManager.clearAllCaches();
+                navigateToSection('getting-started/welcome');
+              }}
+              variant="outline"
+              size="sm"
+            >
+              Go to Welcome
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -341,34 +501,64 @@ export const UserGuideContent: React.FC<UserGuideContentProps> = ({ className = 
     );
   }
 
+  // Wrap the component with error boundary
   return (
-    <div className={`flex flex-col h-full ${className}`}>
-      {/* Content Header */}
-      <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-          {currentSectionData.title}
-        </h1>
-        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
-          <span className="capitalize">
-            {currentSectionData.category.replace('-', ' ')}
-          </span>
-          <span>•</span>
-          <span>{currentSectionData.id}</span>
+    <UserGuideErrorBoundary onError={onError}>
+      <div className={`flex flex-col h-full ${className}`}>
+        {/* Memory Warning Banner */}
+        {memoryWarning && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-3 mb-4 rounded">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 text-yellow-500">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700 dark:text-yellow-200">
+                  High memory usage detected. Some content may be unloaded to improve performance.
+                </p>
+              </div>
+              <div className="ml-auto pl-3">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setMemoryWarning(false)}
+                  aria-label="Dismiss memory warning"
+                >
+                  <span className="sr-only">Dismiss</span>
+                  <span className="text-yellow-500">&times;</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Content Header */}
+        <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            {currentSectionData.title}
+          </h1>
+          <div className="flex items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
+            <span className="capitalize">
+              {currentSectionData.category.replace('-', ' ')}
+            </span>
+            <span>•</span>
+            <span>{currentSectionData.id}</span>
+          </div>
         </div>
-      </div>
 
-      {/* Content Body */}
-      <div
-        ref={contentRef}
-        className="flex-1 overflow-y-auto prose prose-gray dark:prose-invert max-w-none prose-headings:scroll-mt-6 prose-code:text-sm prose-pre:bg-gray-900 prose-pre:text-gray-100"
-        onClick={handleLinkClick}
-        dangerouslySetInnerHTML={{ __html: processedContent }}
-        role="main"
-        aria-label={`${currentSectionData.title} content`}
-        aria-live="polite"
-        aria-atomic="false"
-        tabIndex={0}
-      />
-    </div>
+        {/* Content Body */}
+        <div
+          ref={contentRef}
+          className="flex-1 overflow-y-auto prose prose-gray dark:prose-invert max-w-none prose-headings:scroll-mt-6 prose-code:text-sm prose-pre:bg-gray-900 prose-pre:text-gray-100"
+          onClick={handleLinkClick}
+          dangerouslySetInnerHTML={{ __html: processedContent }}
+          role="main"
+          aria-label={`${currentSectionData.title} content`}
+          aria-live="polite"
+          aria-atomic="false"
+          tabIndex={0}
+        />
+      </div>
+    </UserGuideErrorBoundary>
   );
 };

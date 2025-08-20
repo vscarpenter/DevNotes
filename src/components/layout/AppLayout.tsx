@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { Sidebar } from './Sidebar';
 import { MainPanel } from './MainPanel';
 import { UserGuideModal } from '@/components/userGuide';
+import { PWAUpdateNotification } from '@/components/ui/PWAUpdateNotification';
 
 interface AppLayoutProps {
   children?: React.ReactNode;
@@ -201,6 +202,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         isOpen={isUserGuideOpen} 
         onClose={closeGuide} 
       />
+
+      {/* PWA Update Notification */}
+      <PWAUpdateNotification />
     </div>
   );
 };

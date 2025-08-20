@@ -152,7 +152,7 @@ export const useFolderStore = create<FolderState>()(
         
         if (result.success) {
           set(state => {
-            const { [id]: deleted, ...remainingFolders } = state.folders;
+            const { [id]: _deleted, ...remainingFolders } = state.folders;
             const newExpandedFolders = new Set(state.expandedFolders);
             newExpandedFolders.delete(id);
             
