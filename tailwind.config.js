@@ -1,6 +1,5 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: ["class"],
   content: [
     './pages/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',
@@ -18,82 +17,36 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Geist', 'system-ui', 'sans-serif'],
-        mono: ['Geist Mono', 'monospace'],
-      },
-      fontSize: {
-        'xs': 'var(--text-xs)',
-        'sm': 'var(--text-sm)',
-        'base': 'var(--text-base)',
-        'lg': 'var(--text-lg)',
-        'xl': 'var(--text-xl)',
-        '2xl': 'var(--text-2xl)',
-        '3xl': 'var(--text-3xl)',
-        '4xl': 'var(--text-4xl)',
-      },
-      spacing: {
-        '1': 'var(--space-1)',
-        '2': 'var(--space-2)',
-        '3': 'var(--space-3)',
-        '4': 'var(--space-4)',
-        '5': 'var(--space-5)',
-        '6': 'var(--space-6)',
-        '8': 'var(--space-8)',
-        '10': 'var(--space-10)',
-        '12': 'var(--space-12)',
-        '16': 'var(--space-16)',
+        sans: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['ui-serif', 'Georgia', 'Times New Roman', 'serif'], 
+        mono: ['Geist Mono', 'ui-monospace', 'SFMono-Regular', 'Consolas', 'monospace'],
+        manuscript: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       colors: {
-        border: {
-          DEFAULT: "hsl(var(--border))",
-          hover: "hsl(var(--border-hover))",
-        },
-        input: {
-          DEFAULT: "hsl(var(--input))",
-          focus: "hsl(var(--input-focus))",
-        },
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
-        surface: {
-          DEFAULT: "hsl(var(--surface))",
-          hover: "hsl(var(--surface-hover))",
-        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
-          hover: "hsl(var(--primary-hover))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
-          hover: "hsl(var(--secondary-hover))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
-        success: {
-          DEFAULT: "hsl(var(--success))",
-          foreground: "hsl(var(--success-foreground))",
-        },
-        warning: {
-          DEFAULT: "hsl(var(--warning))",
-          foreground: "hsl(var(--warning-foreground))",
-        },
-        info: {
-          DEFAULT: "hsl(var(--info))",
-          foreground: "hsl(var(--info-foreground))",
-        },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
-          hover: "hsl(var(--muted-hover))",
         },
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
-          hover: "hsl(var(--accent-hover))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -103,25 +56,27 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        neutral: {
-          50: "hsl(var(--neutral-50))",
-          100: "hsl(var(--neutral-100))",
-          200: "hsl(var(--neutral-200))",
-          300: "hsl(var(--neutral-300))",
-          400: "hsl(var(--neutral-400))",
-          500: "hsl(var(--neutral-500))",
-          600: "hsl(var(--neutral-600))",
-          700: "hsl(var(--neutral-700))",
-          800: "hsl(var(--neutral-800))",
-          900: "hsl(var(--neutral-900))",
+        manuscript: {
+          parchment: "hsl(var(--manuscript-parchment))",
+          ink: "hsl(var(--manuscript-ink))",
+          gold: "hsl(var(--manuscript-gold))",
+          shadow: "hsl(var(--manuscript-shadow))",
+        },
+        dark: {
+          DEFAULT: "hsl(var(--dark))",
+          lighter: "hsl(var(--dark-lighter))",
+          accent: "hsl(var(--dark-accent))",
+          teal: "hsl(var(--dark-teal))",
+          gold: "hsl(var(--dark-gold))",
+          text: "hsl(var(--dark-text))",
+          muted: "hsl(var(--dark-muted))",
+          border: "hsl(var(--dark-border))",
         },
       },
       borderRadius: {
-        'sm': 'var(--radius-sm)',
-        'DEFAULT': 'var(--radius)',
-        'md': 'var(--radius-md)',
-        'lg': 'var(--radius-lg)',
-        'xl': 'var(--radius-xl)',
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
         "accordion-down": {

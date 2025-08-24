@@ -181,21 +181,26 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     extensions.push(EditorView.theme({
       '&': {
         fontSize: `${fontSize}px`,
-        fontFamily: 'Geist Mono, monospace',
-        height: '100%'
+        fontFamily: 'Georgia, "Crimson Text", serif',
+        height: '100%',
+        backgroundColor: 'hsl(var(--manuscript-parchment))'
       },
       '.cm-editor': {
-        height: '100%'
+        height: '100%',
+        backgroundColor: 'hsl(var(--manuscript-parchment))'
       },
       '.cm-scroller': {
-        fontFamily: 'Geist Mono, monospace',
-        lineHeight: '1.5',
-        overflow: 'auto'
+        fontFamily: 'Georgia, "Crimson Text", serif',
+        lineHeight: '1.6',
+        overflow: 'auto',
+        backgroundColor: 'hsl(var(--manuscript-parchment))'
       },
       '.cm-content': {
-        padding: '16px',
+        padding: '24px 32px',
         minHeight: '100%',
-        cursor: 'text'
+        cursor: 'text',
+        color: 'hsl(var(--manuscript-ink))',
+        backgroundColor: 'hsl(var(--manuscript-parchment))'
       },
       '.cm-focused': {
         outline: 'none'
@@ -210,10 +215,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       extensions.push(EditorView.lineWrapping);
     }
 
-    // Add dark theme if enabled
-    if (isDarkMode) {
-      extensions.push(oneDark);
-    }
+    // Manuscript theme overrides dark mode for consistent aesthetic
+    // Using manuscript styling regardless of dark mode preference
 
     return extensions;
   }, [isDarkMode, showLineNumbers, wordWrap, fontSize, handleContentChange, forceSave, insertFormatting, onScroll]);

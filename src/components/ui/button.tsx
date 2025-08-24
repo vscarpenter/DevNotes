@@ -5,22 +5,19 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98] relative overflow-hidden",
+  "manuscript-button inline-flex items-center justify-center whitespace-nowrap rounded text-sm font-medium manuscript-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm hover:shadow-md",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 border border-manuscript-shadow/20",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm hover:shadow-md",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 border border-manuscript-shadow/20",
         outline:
-          "border border-border bg-background hover:bg-surface hover:border-border-hover shadow-sm",
+          "border border-manuscript-shadow bg-manuscript-parchment hover:bg-accent hover:text-accent-foreground",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary-hover shadow-sm",
-        ghost: "hover:bg-accent-hover hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline hover:text-primary-hover",
-        success: "bg-success text-success-foreground hover:bg-success/90 shadow-sm hover:shadow-md",
-        warning: "bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm hover:shadow-md",
-        info: "bg-info text-info-foreground hover:bg-info/90 shadow-sm hover:shadow-md",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-manuscript-shadow/20",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-manuscript-gold underline-offset-4 hover:underline hover:text-primary",
       },
       size: {
         xs: "h-8 px-2 text-xs",

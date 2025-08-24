@@ -78,15 +78,16 @@ const NoteItem: React.FC<NoteItemProps> = ({
   return (
     <div
       className={cn(
-        "flex items-start gap-3 p-4 border-b border-border cursor-pointer transition-colors hover:bg-accent/50",
-        isSelected && "bg-accent border-accent-foreground/20"
+        "flex items-start gap-3 p-4 border-b border-manuscript-shadow cursor-pointer transition-all duration-200",
+        "hover:bg-manuscript-parchment hover:shadow-sm manuscript-text",
+        isSelected && "bg-manuscript-gold/20 text-manuscript-ink border-manuscript-gold/30"
       )}
       onClick={() => onSelect(note.id)}
       onContextMenu={(e) => onContextMenu(note, e)}
     >
       {/* Note icon */}
       <div className="flex-shrink-0 mt-1">
-        <FileText className="h-4 w-4 text-muted-foreground" />
+        <FileText className="h-4 w-4 text-manuscript-gold" />
       </div>
       
       {/* Note content */}
@@ -94,8 +95,8 @@ const NoteItem: React.FC<NoteItemProps> = ({
         {/* Title and metadata row */}
         <div className="flex items-center justify-between gap-2 mb-1">
           <h3 className={cn(
-            "font-medium text-sm truncate",
-            isSelected ? "text-accent-foreground" : "text-foreground"
+            "font-medium text-sm truncate manuscript-heading",
+            isSelected ? "text-manuscript-ink" : "text-manuscript-ink"
           )}>
             {note.title}
           </h3>
@@ -146,7 +147,7 @@ const NoteItem: React.FC<NoteItemProps> = ({
       <Button
         variant="ghost"
         size="icon"
-        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="h-6 w-6 text-muted-foreground hover:text-foreground"
         onClick={(e) => {
           e.stopPropagation();
           onContextMenu(note, e);
