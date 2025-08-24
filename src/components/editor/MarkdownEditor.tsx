@@ -5,8 +5,8 @@
  */
 
 import React, { useEffect, useRef, useCallback } from 'react';
-import { EditorView, keymap } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { EditorView, keymap, ViewUpdate } from '@codemirror/view';
+import { EditorState, StateEffect } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { defaultKeymap, indentWithTab } from '@codemirror/commands';
@@ -29,6 +29,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const isFirstRender = useRef(true);
   const { getNote, updateNote } = useNoteStore();
   const { 
     isDarkMode, 
@@ -39,6 +40,15 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     setCursorPosition,
     setSelectionInfo
   } = useUIStore();
+  
+  const setCursorPositionRef = useRef(setCursorPosition);
+  const setSelectionInfoRef = useRef(setSelectionInfo);
+  
+  // Update refs when functions change
+  useEffect(() => {
+    setCursorPositionRef.current = setCursorPosition;
+    setSelectionInfoRef.current = setSelectionInfo;
+  }, [setCursorPosition, setSelectionInfo]);
   
   const note = getNote(noteId);
   
@@ -56,8 +66,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     },
     delay: 500
   });
-
-
 
   // Insert formatting helper
   const insertFormatting = useCallback((before: string, after: string) => {
@@ -145,12 +153,12 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         const line = doc.lineAt(from);
         const column = from - line.from + 1;
         
-        setCursorPosition({ 
+        setCursorPositionRef.current({
           line: line.number, 
           column 
         });
         
-        setSelectionInfo({
+        setSelectionInfoRef.current({
           hasSelection: from !== to,
           selectedLength: to - from
         });
@@ -162,7 +170,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       extensions.push(EditorView.domEventHandlers({
         scroll: (event: Event) => {
           const target = event.target as HTMLElement;
-          if (target.classList.contains('cm-scroller')) {
+          if (target && target.classList && target.classList.contains('cm-scroller')) {
             onScroll(target.scrollTop, target.scrollHeight);
           }
         }
@@ -208,7 +216,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
 
     return extensions;
-  }, [isDarkMode, showLineNumbers, wordWrap, fontSize, handleContentChange, forceSave, insertFormatting, setCursorPosition, setSelectionInfo, onScroll]);
+  }, [isDarkMode, showLineNumbers, wordWrap, fontSize, handleContentChange, forceSave, insertFormatting, onScroll]);
 
   // Toolbar action handlers
   const handleBold = useCallback(() => insertFormatting('**', '**'), [insertFormatting]);
@@ -221,51 +229,83 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const handleCode = useCallback(() => insertFormatting('`', '`'), [insertFormatting]);
   const handleCodeBlock = useCallback(() => insertFormatting('```\n', '\n```'), [insertFormatting]);
   
-  // Math and diagram handlers
-  const handleMath = useCallback(() => insertFormatting('$', '$'), [insertFormatting]);
-  const handleMathBlock = useCallback(() => insertFormatting('$$\n', '\n$$'), [insertFormatting]);
-  const handleMermaid = useCallback(() => {
-    const template = 'graph TD\n    A[Start] --> B[Process]\n    B --> C[End]';
-    insertFormatting('```mermaid\n', `\n${template}\n\`\`\``);
-  }, [insertFormatting]);
+  // List handlers
+  const handleBulletList = useCallback(() => {
+    const view = viewRef.current;
+    if (!view) return;
 
-  // Initialize editor
+    const { from } = view.state.selection.main;
+    const line = view.state.doc.lineAt(from);
+    const lineStart = line.from;
+    
+    // Insert bullet point at the beginning of the line
+    view.dispatch({
+      changes: { from: lineStart, to: lineStart, insert: '- ' },
+      selection: { anchor: from + 2, head: from + 2 }
+    });
+    
+    view.focus();
+  }, []);
+
+  const handleNumberedList = useCallback(() => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    const { from } = view.state.selection.main;
+    const line = view.state.doc.lineAt(from);
+    const lineStart = line.from;
+    
+    // Insert numbered list item at the beginning of the line
+    view.dispatch({
+      changes: { from: lineStart, to: lineStart, insert: '1. ' },
+      selection: { anchor: from + 3, head: from + 3 }
+    });
+    
+    view.focus();
+  }, []);
+
+  // Initialize editor and handle note switches
   useEffect(() => {
-    if (!editorRef.current || !note) return;
+    if (!editorRef.current) return;
 
-    // Clear any existing content
+    const note = getNote(noteId);
+    if (!note) {
+      if (viewRef.current) {
+        viewRef.current.destroy();
+        viewRef.current = null;
+      }
+      return;
+    }
+
+    // Clear the container before creating a new editor
     editorRef.current.innerHTML = '';
 
     const state = EditorState.create({
       doc: note.content,
-      extensions: createExtensions()
+      extensions: createExtensions(),
     });
 
     const view = new EditorView({
       state,
-      parent: editorRef.current
+      parent: editorRef.current,
     });
 
     viewRef.current = view;
-
-    // Focus the editor after a short delay to ensure it's fully rendered
-    setTimeout(() => {
-      if (view && !view.dom.querySelector('.cm-focused')) {
-        view.focus();
-      }
-    }, 100);
+    
+    setTimeout(() => view.focus(), 100);
 
     return () => {
-      if (view) {
-        view.destroy();
+      if (viewRef.current) {
+        viewRef.current.destroy();
+        viewRef.current = null;
       }
-      viewRef.current = null;
     };
-  }, [note?.id, createExtensions, note]);
+  }, [noteId]);
 
-  // Update editor when note content changes externally
+  // Update editor content when it changes externally
   useEffect(() => {
     const view = viewRef.current;
+    const note = getNote(noteId);
     if (!view || !note) return;
 
     const currentContent = view.state.doc.toString();
@@ -274,32 +314,21 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         changes: {
           from: 0,
           to: view.state.doc.length,
-          insert: note.content
-        }
+          insert: note.content,
+        },
       });
     }
-  }, [note?.content, note]);
+  }, [note?.content]);
 
-  // Recreate editor when settings change
+  // Update editor configuration when settings change
   useEffect(() => {
     const view = viewRef.current;
-    if (!view || !note) return;
+    if (!view) return;
 
-    // Destroy and recreate the editor with new extensions
-    view.destroy();
-    
-    const state = EditorState.create({
-      doc: note.content,
-      extensions: createExtensions()
+    view.dispatch({
+      effects: StateEffect.reconfigure.of(createExtensions()),
     });
-
-    const newView = new EditorView({
-      state,
-      parent: editorRef.current!
-    });
-
-    viewRef.current = newView;
-  }, [isDarkMode, showLineNumbers, wordWrap, fontSize, createExtensions, note]);
+  }, [isDarkMode, showLineNumbers, wordWrap, fontSize, createExtensions]);
 
   if (!note) {
     return (
@@ -318,9 +347,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         onLink={handleLink}
         onCode={handleCode}
         onCodeBlock={handleCodeBlock}
-        onMath={handleMath}
-        onMathBlock={handleMathBlock}
-        onMermaid={handleMermaid}
+        onBulletList={handleBulletList}
+        onNumberedList={handleNumberedList}
         onSave={forceSave}
       />
       <div 
@@ -328,6 +356,12 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         className="flex-1 border-t border-border"
         data-testid="markdown-editor"
         style={{ height: '100%', minHeight: '200px' }}
+        onClick={() => {
+          // Ensure editor gets focus when clicked
+          if (viewRef.current) {
+            viewRef.current.focus();
+          }
+        }}
       />
     </div>
   );

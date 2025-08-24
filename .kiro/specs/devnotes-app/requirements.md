@@ -109,8 +109,34 @@ DevNotes is a web-based note-taking application specifically designed for softwa
 3. WHEN a user shares via email THEN the system SHALL generate mailto links with note content
 4. WHEN a user copies to clipboard THEN the system SHALL support both markdown and HTML formats
 5. WHEN export operations occur THEN the system SHALL maintain proper file structure and metadata
+6. WHEN a user imports data THEN the system SHALL support JSON and ZIP formats with validation
+7. WHEN import conflicts occur THEN the system SHALL provide conflict resolution options
 
-### Requirement 9: Performance and Responsiveness
+### Requirement 9: Tag Management System
+
+**User Story:** As a developer, I want to tag my notes with keywords, so that I can categorize and filter my content across different organizational dimensions.
+
+#### Acceptance Criteria
+
+1. WHEN a user adds tags to a note THEN the system SHALL store and display them as visual indicators
+2. WHEN a user searches by tags THEN the system SHALL filter notes containing the specified tags
+3. WHEN a user manages tags THEN the system SHALL provide a tag manager interface for bulk operations
+4. WHEN tags are displayed THEN the system SHALL show tag usage counts and allow sorting
+5. WHEN a user deletes a tag THEN the system SHALL remove it from all associated notes with confirmation
+
+### Requirement 10: User Guide and Help System
+
+**User Story:** As a user of DevNotes, I want access to comprehensive help and documentation, so that I can learn all features and troubleshoot issues effectively.
+
+#### Acceptance Criteria
+
+1. WHEN a user accesses help THEN the system SHALL display an integrated user guide modal
+2. WHEN a user searches help content THEN the system SHALL provide fuzzy search with highlighting
+3. WHEN a user views help sections THEN the system SHALL show practical examples and screenshots
+4. WHEN a user encounters UI elements THEN the system SHALL provide contextual tooltips where helpful
+5. WHEN a user needs assistance THEN the system SHALL maintain help accessibility without disrupting workflow
+
+### Requirement 11: Performance and Responsiveness
 
 **User Story:** As a developer, I want the application to be fast and responsive, so that it doesn't interrupt my workflow or thinking process.
 
@@ -123,7 +149,19 @@ DevNotes is a web-based note-taking application specifically designed for softwa
 5. WHEN the application bundle is delivered THEN the system SHALL be under 500KB gzipped
 6. WHEN large note lists are displayed THEN the system SHALL use virtual scrolling for optimal performance
 
-### Requirement 10: Accessibility and User Experience
+### Requirement 12: Progressive Web App Features
+
+**User Story:** As a developer, I want the application to work offline and be installable as a PWA, so that I can access my notes anywhere without internet dependency.
+
+#### Acceptance Criteria
+
+1. WHEN the application is accessed THEN the system SHALL provide PWA installation prompts
+2. WHEN the application is used offline THEN the system SHALL maintain full functionality
+3. WHEN updates are available THEN the system SHALL notify users and allow update installation
+4. WHEN the PWA is installed THEN the system SHALL provide native app-like experience
+5. WHEN service worker caches content THEN the system SHALL ensure optimal caching strategies
+
+### Requirement 13: Accessibility and User Experience
 
 **User Story:** As a developer with accessibility needs, I want the application to be fully accessible via keyboard and screen readers, so that I can use it effectively regardless of my abilities.
 

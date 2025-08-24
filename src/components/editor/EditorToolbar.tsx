@@ -18,8 +18,8 @@ import {
   Eye,
   Edit,
   Split,
-  Calculator,
-  GitBranch
+  List,
+  ListOrdered
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useUIStore } from '../../stores/uiStore';
@@ -32,9 +32,8 @@ interface EditorToolbarProps {
   onLink: () => void;
   onCode: () => void;
   onCodeBlock: () => void;
-  onMath: () => void;
-  onMathBlock: () => void;
-  onMermaid: () => void;
+  onBulletList: () => void;
+  onNumberedList: () => void;
   onSave: () => void;
   showPreviewControls?: boolean;
 }
@@ -46,9 +45,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   onLink,
   onCode,
   onCodeBlock,
-  onMath,
-  onMathBlock,
-  onMermaid,
+  onBulletList,
+  onNumberedList,
   onSave,
   showPreviewControls = false
 }) => {
@@ -181,37 +179,31 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         </TooltipWrapper>
       </div>
 
-      {/* Math and diagrams */}
+      {/* Lists */}
       <div className="flex items-center gap-1 border-r border-border pr-2 mr-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onMath}
-          title="Inline Math"
-          className="h-8 w-8 p-0"
-        >
-          <Calculator className="h-4 w-4" />
-        </Button>
+        <TooltipWrapper tooltipId="editor-toolbar-bullet-list">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBulletList}
+            title="Bullet List"
+            className="h-8 w-8 p-0"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </TooltipWrapper>
         
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onMathBlock}
-          title="Math Block"
-          className="h-8 w-8 p-0"
-        >
-          <Calculator className="h-4 w-4" />
-        </Button>
-        
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onMermaid}
-          title="Mermaid Diagram"
-          className="h-8 w-8 p-0"
-        >
-          <GitBranch className="h-4 w-4" />
-        </Button>
+        <TooltipWrapper tooltipId="editor-toolbar-numbered-list">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onNumberedList}
+            title="Numbered List"
+            className="h-8 w-8 p-0"
+          >
+            <ListOrdered className="h-4 w-4" />
+          </Button>
+        </TooltipWrapper>
       </div>
 
       {/* Preview controls */}

@@ -24,9 +24,8 @@ describe('EditorToolbar', () => {
     onLink: vi.fn(),
     onCode: vi.fn(),
     onCodeBlock: vi.fn(),
-    onMath: vi.fn(),
-    onMathBlock: vi.fn(),
-    onMermaid: vi.fn(),
+    onBulletList: vi.fn(),
+    onNumberedList: vi.fn(),
     onSave: vi.fn()
   };
 
@@ -91,6 +90,10 @@ describe('EditorToolbar', () => {
     expect(screen.getByRole('button', { name: /link/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /inline code/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /code block/i })).toBeInTheDocument();
+
+    // Lists
+    expect(screen.getByRole('button', { name: /bullet list/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /numbered list/i })).toBeInTheDocument();
 
     // Save button
     expect(screen.getByRole('button', { name: /saved/i })).toBeInTheDocument();
@@ -162,6 +165,26 @@ describe('EditorToolbar', () => {
     await user.click(codeBlockButton);
 
     expect(mockHandlers.onCodeBlock).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onBulletList when bullet list button is clicked', async () => {
+    const user = userEvent.setup();
+    render(<EditorToolbar {...mockHandlers} />);
+
+    const bulletListButton = screen.getByRole('button', { name: /bullet list/i });
+    await user.click(bulletListButton);
+
+    expect(mockHandlers.onBulletList).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onNumberedList when numbered list button is clicked', async () => {
+    const user = userEvent.setup();
+    render(<EditorToolbar {...mockHandlers} />);
+
+    const numberedListButton = screen.getByRole('button', { name: /numbered list/i });
+    await user.click(numberedListButton);
+
+    expect(mockHandlers.onNumberedList).toHaveBeenCalledTimes(1);
   });
 
   it('calls onSave when save button is clicked', async () => {

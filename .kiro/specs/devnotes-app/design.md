@@ -70,9 +70,11 @@ interface Note {
   folderId: string;
   createdAt: Date;
   updatedAt: Date;
-  tags?: string[];
+  tags: string[];
   wordCount: number;
   readingTime: number;
+  isDeleted?: boolean;
+  deletedAt?: Date;
 }
 
 interface Folder {
@@ -84,6 +86,17 @@ interface Folder {
   createdAt: Date;
   updatedAt: Date;
   isExpanded: boolean;
+  isDeleted?: boolean;
+  deletedAt?: Date;
+}
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: Date;
+  updatedAt: Date;
+  noteCount: number;
 }
 
 interface SearchResult {
@@ -94,6 +107,7 @@ interface SearchResult {
   folderPath: string;
   lastModified: Date;
   highlights: SearchHighlight[];
+  tags: string[];
 }
 
 interface SearchHighlight {
@@ -101,45 +115,99 @@ interface SearchHighlight {
   end: number;
   text: string;
 }
+
+interface SearchFilters {
+  folderId?: string;
+  tags?: string[];
+  dateRange?: {
+    start: Date;
+    end: Date;
+  };
+  sortBy: 'relevance' | 'date' | 'title';
+  sortOrder: 'asc' | 'desc';
+}
+
+interface GuideSection {
+  id: string;
+  title: string;
+  content: string;
+  category: 'getting-started' | 'features' | 'advanced' | 'troubleshooting';
+  order: number;
+  searchKeywords: string[];
+}
+
+interface GuideSearchResult {
+  sectionId: string;
+  title: string;
+  snippet: string;
+  category: string;
+  matchScore: number;
+}
 ```
 
 ### State Management Architecture
 
+The application uses a distributed Zustand store architecture with specialized stores for different domains:
+
 ```typescript
-// Global application state using Zustand
-interface AppState {
-  // Data state
+// Distributed store architecture
+interface AppStore {
+  // Initialization and coordination
+  initialize: () => Promise<void>;
+  isInitialized: boolean;
+}
+
+interface NoteStore {
   notes: Record<string, Note>;
-  folders: Record<string, Folder>;
-  
-  // UI state
-  selectedNoteId: string | null;
-  selectedFolderId: string | null;
-  searchQuery: string;
-  searchResults: SearchResult[];
-  sidebarWidth: number;
-  isDarkMode: boolean;
-  isPreviewMode: boolean;
-  
-  // Actions
   createNote: (folderId: string, title?: string) => Promise<string>;
   updateNote: (id: string, updates: Partial<Note>) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
   moveNote: (noteId: string, targetFolderId: string) => Promise<void>;
-  
+  duplicateNote: (noteId: string) => Promise<string>;
+}
+
+interface FolderStore {
+  folders: Record<string, Folder>;
   createFolder: (parentId: string | null, name: string) => Promise<string>;
   updateFolder: (id: string, updates: Partial<Folder>) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
   moveFolder: (folderId: string, targetParentId: string | null) => Promise<void>;
-  
+}
+
+interface UIStore {
+  selectedNoteId: string | null;
+  selectedFolderId: string | null;
+  sidebarWidth: number;
+  isDarkMode: boolean;
+  panelLayout: 'split' | 'editor' | 'preview';
+  isSidebarCollapsed: boolean;
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error';
+}
+
+interface SearchStore {
+  searchQuery: string;
+  searchResults: SearchResult[];
+  recentNotes: Note[];
+  searchFilters: SearchFilters;
   search: (query: string) => Promise<SearchResult[]>;
   clearSearch: () => void;
-  
-  setSelectedNote: (id: string | null) => void;
-  setSelectedFolder: (id: string | null) => void;
-  setSidebarWidth: (width: number) => void;
-  toggleDarkMode: () => void;
-  togglePreviewMode: () => void;
+}
+
+interface TagStore {
+  tags: Record<string, Tag>;
+  createTag: (name: string, color?: string) => Promise<string>;
+  updateTag: (id: string, updates: Partial<Tag>) => Promise<void>;
+  deleteTag: (id: string) => Promise<void>;
+  addTagToNote: (noteId: string, tagId: string) => Promise<void>;
+  removeTagFromNote: (noteId: string, tagId: string) => Promise<void>;
+}
+
+interface UserGuideStore {
+  isOpen: boolean;
+  currentSection: string | null;
+  searchQuery: string;
+  searchResults: GuideSearchResult[];
+  lastViewedSection: string | null;
 }
 ```
 
@@ -430,6 +498,128 @@ class DatabaseErrorHandler {
   
   private static async handleStorageQuotaExceeded(): Promise<void> {
     // Implement cleanup strategies
+  }
+}
+```
+
+### User Guide System
+
+The application includes a comprehensive user guide system with contextual help and searchable documentation.
+
+#### User Guide Architecture
+
+```typescript
+class UserGuideService {
+  private content: Map<string, GuideSection> = new Map();
+  private searchIndex: SearchIndex;
+  
+  async loadContent(): Promise<void> {
+    // Load markdown content files at build time
+    const contentModules = import.meta.glob('/src/content/userGuide/markdown/**/*.md');
+    for (const [path, loader] of Object.entries(contentModules)) {
+      const module = await loader();
+      const section = this.parseMarkdownSection(module.default, path);
+      this.content.set(section.id, section);
+    }
+    this.buildSearchIndex();
+  }
+  
+  search(query: string): GuideSearchResult[] {
+    return this.searchIndex.search(query);
+  }
+  
+  getSection(id: string): GuideSection | null {
+    return this.content.get(id) || null;
+  }
+}
+```
+
+#### Contextual Help System
+
+```typescript
+interface TooltipConfig {
+  id: string;
+  title: string;
+  content: string;
+  placement: 'top' | 'bottom' | 'left' | 'right';
+  trigger: 'hover' | 'focus' | 'click';
+  delay?: number;
+}
+
+const withTooltip = <P extends object>(
+  Component: React.ComponentType<P>,
+  config: TooltipConfig
+) => {
+  return React.forwardRef<any, P>((props, ref) => (
+    <UserGuideTooltip config={config}>
+      <Component {...props} ref={ref} />
+    </UserGuideTooltip>
+  ));
+};
+```
+
+#### Content Structure
+
+```
+src/content/userGuide/markdown/
+├── getting-started/
+│   ├── welcome.md
+│   ├── first-note.md
+│   └── organizing-notes.md
+├── features/
+│   ├── markdown-editor.md
+│   ├── search.md
+│   ├── export-import.md
+│   └── keyboard-shortcuts.md
+├── advanced/
+│   ├── power-user-tips.md
+│   ├── customization.md
+│   └── data-management.md
+└── troubleshooting/
+    ├── common-issues.md
+    ├── performance.md
+    ├── data-recovery.md
+    └── memory-management.md
+```
+
+### Tag Management System
+
+The application includes a comprehensive tag system for categorizing and filtering notes.
+
+#### Tag Service Implementation
+
+```typescript
+class TagService {
+  private db: DatabaseService;
+  
+  async createTag(name: string, color?: string): Promise<Tag> {
+    const tag: Omit<Tag, 'id'> = {
+      name: name.trim().toLowerCase(),
+      color: color || this.generateRandomColor(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      noteCount: 0
+    };
+    
+    const id = await this.db.tags.add(tag);
+    return { ...tag, id };
+  }
+  
+  async addTagToNote(noteId: string, tagId: string): Promise<void> {
+    const note = await this.db.notes.get(noteId);
+    if (note && !note.tags.includes(tagId)) {
+      note.tags.push(tagId);
+      await this.db.notes.update(noteId, { tags: note.tags });
+      await this.updateTagCount(tagId, 1);
+    }
+  }
+  
+  async getPopularTags(limit: number = 10): Promise<Tag[]> {
+    return this.db.tags
+      .orderBy('noteCount')
+      .reverse()
+      .limit(limit)
+      .toArray();
   }
 }
 ```

@@ -1,4 +1,7 @@
 {
-  "mcpServers": {
-  }
-}
+    "version": "1.0",
+    "config": {
+      "enabled": true,
+      "settings": {}
+    }
+  }  
