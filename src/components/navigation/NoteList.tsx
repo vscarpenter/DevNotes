@@ -7,11 +7,11 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { FixedSizeList as List } from 'react-window';
-import { 
-  FileText, 
-  MoreVertical, 
-  Copy, 
-  Trash2, 
+import {
+  FileText,
+  MoreVertical,
+  Copy,
+  Trash2,
   FolderOpen,
   Clock,
   Hash
@@ -21,6 +21,7 @@ import { useNoteStore } from '../../stores/noteStore';
 import { useFolderStore } from '../../stores/folderStore';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
+import { useDraggable } from '@/hooks/useDragDrop';
 
 export interface NoteListProps {
   folderId?: string;
@@ -39,15 +40,22 @@ interface NoteItemProps {
 }
 
 // Individual note item component
-const NoteItem: React.FC<NoteItemProps> = ({ 
-  note, 
-  isSelected, 
-  onSelect, 
-  onContextMenu 
+const NoteItem: React.FC<NoteItemProps> = ({
+  note,
+  isSelected,
+  onSelect,
+  onContextMenu
 }) => {
   const { getFolder } = useFolderStore();
   const folder = getFolder(note.folderId);
-  
+
+  // Drag and drop functionality
+  const { isDragging, dragProps } = useDraggable({
+    type: 'note',
+    id: note.id,
+    data: note
+  });
+
   // Generate preview text from content
   const previewText = useMemo(() => {
     const plainText = note.content
@@ -57,7 +65,7 @@ const NoteItem: React.FC<NoteItemProps> = ({
       .replace(/`(.*?)`/g, '$1') // Remove inline code
       .replace(/\n/g, ' ') // Replace newlines with spaces
       .trim();
-    
+
     return plainText.length > 60 ? `${plainText.slice(0, 60)}...` : plainText;
   }, [note.content]);
 
@@ -77,13 +85,16 @@ const NoteItem: React.FC<NoteItemProps> = ({
 
   return (
     <div
+      {...dragProps}
       className={cn(
         "flex items-start gap-3 p-4 border-b border-manuscript-shadow cursor-pointer transition-all duration-200",
-        "hover:bg-manuscript-parchment hover:shadow-sm manuscript-text",
-        isSelected && "bg-manuscript-gold/20 text-manuscript-ink border-manuscript-gold/30"
+        "hover:bg-manuscript-parchment hover:shadow-sm manuscript-text item-hover",
+        isSelected && "bg-manuscript-gold/20 text-manuscript-ink border-manuscript-gold/30",
+        isDragging && "opacity-50 cursor-grabbing scale-95"
       )}
       onClick={() => onSelect(note.id)}
       onContextMenu={(e) => onContextMenu(note, e)}
+      aria-label={`${note.title}${isDragging ? ' (dragging)' : ''}`}
     >
       {/* Note icon */}
       <div className="flex-shrink-0 mt-1">

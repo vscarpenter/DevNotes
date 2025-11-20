@@ -9,10 +9,10 @@ import { createPortal } from 'react-dom';
 import { useFolderStore } from '@/stores/folderStore';
 import { useNoteStore } from '@/stores/noteStore';
 import { cn } from '@/lib/utils';
-import { 
-  ChevronRight, 
-  ChevronDown, 
-  Folder, 
+import {
+  ChevronRight,
+  ChevronDown,
+  Folder,
   FolderOpen,
   FolderPlus,
   MoreHorizontal,
@@ -21,6 +21,8 @@ import {
   FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { useDragAndDrop } from '@/hooks/useDragDrop';
+import { DragData } from '@/types/dragdrop';
 
 interface FolderTreeProps {
   className?: string;
@@ -119,22 +121,23 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   return createPortal(menuContent, document.body);
 };
 
-const FolderTreeItem: React.FC<FolderTreeItemProps> = ({ 
-  folderId, 
-  level, 
-  onContextMenu 
+const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
+  folderId,
+  level,
+  onContextMenu
 }) => {
-  const { 
-    getFolder, 
-    getChildFolders, 
-    isFolderExpanded, 
+  const {
+    getFolder,
+    getChildFolders,
+    isFolderExpanded,
     toggleFolderExpansion,
     selectedFolderId,
-    selectFolder
+    selectFolder,
+    moveFolder
   } = useFolderStore();
-  
-  const { getNotesByFolder } = useNoteStore();
-  
+
+  const { getNotesByFolder, moveNote } = useNoteStore();
+
   const folder = getFolder(folderId);
   const childFolders = getChildFolders(folderId);
   const notes = getNotesByFolder(folderId);
@@ -142,6 +145,49 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
   const isSelected = selectedFolderId === folderId;
   const hasChildren = childFolders.length > 0;
   const hasNotes = notes.length > 0;
+
+  // Drag and drop functionality
+  const { isDragging, isOver, canDrop, combinedProps } = useDragAndDrop(
+    {
+      type: 'folder',
+      id: folderId,
+      data: folder
+    },
+    {
+      id: folderId,
+      type: 'folder',
+      acceptedTypes: ['folder', 'note'],
+      canDrop: (dragData: DragData) => {
+        // Don't allow dropping on itself
+        if (dragData.id === folderId) return false;
+
+        // For folders, prevent dropping parent into child
+        if (dragData.type === 'folder') {
+          let currentParent = folder?.parentId;
+          while (currentParent) {
+            if (currentParent === dragData.id) return false;
+            const parentFolder = getFolder(currentParent);
+            currentParent = parentFolder?.parentId || null;
+          }
+        }
+
+        return true;
+      },
+      onDrop: async (dragData: DragData) => {
+        try {
+          if (dragData.type === 'folder') {
+            // Move folder into this folder
+            await moveFolder(dragData.id, folderId);
+          } else if (dragData.type === 'note') {
+            // Move note into this folder
+            await moveNote(dragData.id, folderId);
+          }
+        } catch (error) {
+          console.error('Drop operation failed:', error);
+        }
+      }
+    }
+  );
 
   if (!folder) return null;
 
@@ -187,11 +233,15 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
   return (
     <div>
       <div
+        {...combinedProps}
         className={cn(
           'flex items-center gap-1 py-1 px-2 rounded cursor-pointer group',
-          'hover:bg-accent transition-colors',
+          'hover:bg-accent transition-all duration-200',
           isSelected && 'bg-accent',
-          'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1'
+          'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
+          isDragging && 'opacity-50 cursor-grabbing',
+          isOver && canDrop && 'bg-dark-teal/20 border-l-2 border-l-dark-teal shadow-elevation-2',
+          isOver && !canDrop && 'bg-destructive/10 border-l-2 border-l-destructive'
         )}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={handleSelect}
@@ -202,6 +252,7 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-selected={isSelected}
         aria-level={level + 1}
+        aria-label={`${folder.name} folder${isDragging ? ' (dragging)' : ''}${isOver && canDrop ? ' (drop here)' : ''}`}
       >
         {/* Expand/collapse button */}
         <button
