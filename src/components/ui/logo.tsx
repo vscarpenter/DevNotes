@@ -38,8 +38,8 @@ export const Logo: React.FC<LogoProps> = ({
         {/* Background circle with gradient */}
         <defs>
           <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="hsl(var(--primary))" />
-            <stop offset="100%" stopColor="hsl(var(--primary) / 0.8)" />
+            <stop offset="0%" stopColor="var(--accent)" />
+            <stop offset="100%" stopColor="var(--accent-d)" />
           </linearGradient>
         </defs>
         

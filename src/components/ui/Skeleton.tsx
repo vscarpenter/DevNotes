@@ -28,9 +28,12 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     rectangular: 'rounded-sm',
   };
 
+  // Inkwell's own .skeleton class uses a token-driven shimmer; the
+  // built-in Tailwind animate-pulse is fine for both modes here, since
+  // bg-muted resolves to var(--gray-100) (light) / var(--gray-100) (dark).
   const animationClasses = {
     pulse: 'animate-pulse',
-    wave: 'loading-pulse',
+    wave: 'animate-pulse',
     none: '',
   };
 

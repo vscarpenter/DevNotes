@@ -365,8 +365,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="glass-modal rounded-lg w-full max-w-4xl max-h-[80vh] overflow-hidden animate-slide-up">
+    <div className="fixed inset-0 bg-[var(--backdrop)] backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="bg-paper border border-border rounded-lg shadow-lg w-full max-w-4xl max-h-[80vh] overflow-hidden animate-slide-up">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">

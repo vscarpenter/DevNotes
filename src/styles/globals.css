@@ -1,317 +1,108 @@
+/* Inkwell design system: tokens first (defines :root + dark cascade),
+   then Tailwind layers (utilities resolve to Inkwell vars via tailwind.config.js),
+   then Inkwell component CSS (semantic classes layered after Tailwind base). */
+@import './inkwell-tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    /* Dark theme inspired by the provided interface */
-    --background: 216 13% 12%;         /* Deep dark background #1a1e24 */
-    --foreground: 210 20% 85%;         /* Light gray text #d1d5db */
-    --card: 217 15% 15%;               /* Slightly lighter dark #242831 */
-    --card-foreground: 210 20% 85%;    /* Light text on cards */
-    --popover: 217 15% 15%;            /* Match card */
-    --popover-foreground: 210 20% 85%; /* Light text */
-    --primary: 185 80% 45%;            /* Teal accent #1e9faa */
-    --primary-foreground: 210 20% 98%; /* Very light text on primary */
-    --secondary: 217 15% 18%;          /* Slightly lighter than card #2a2f38 */
-    --secondary-foreground: 210 20% 85%; /* Light text */
-    --muted: 217 15% 20%;              /* Muted dark #2f3440 */
-    --muted-foreground: 215 15% 65%;   /* Muted light text #9ca3af */
-    --accent: 185 80% 45%;             /* Match primary teal */
-    --accent-foreground: 210 20% 98%;  /* Light text on accent */
-    --destructive: 0 75% 55%;          /* Red for destructive actions */
-    --destructive-foreground: 0 0% 98%; /* Light text */
-    --border: 217 15% 25%;             /* Subtle border #3a4048 */
-    --input: 217 15% 18%;              /* Input background */
-    --ring: 185 80% 45%;               /* Teal focus ring */
-    --radius: 0.5rem;                  /* Rounded corners */
-    
-    /* Dark theme specific colors */
-    --dark: 216 13% 12%;               /* Main dark background */
-    --dark-lighter: 217 15% 15%;       /* Lighter dark areas */
-    --dark-accent: 217 15% 18%;        /* Accent dark areas */
-    --dark-teal: 185 80% 45%;          /* Teal accent color */
-    --dark-gold: 45 85% 65%;           /* Golden accent #f5d772 */
-    --dark-text: 210 20% 85%;          /* Primary text color */
-    --dark-muted: 215 15% 65%;         /* Muted text color */
-    --dark-border: 217 15% 25%;        /* Border color */
-    
-    /* Legacy manuscript colors (keeping for compatibility) */
-    --manuscript-parchment: 217 15% 15%; /* Dark parchment */
-    --manuscript-ink: 210 20% 85%;       /* Light ink */
-    --manuscript-gold: 45 85% 65%;       /* Golden highlights */
-    --manuscript-shadow: 217 15% 25%;    /* Dark shadows */
-  }
-}
+@import './inkwell-components.css';
 
+/* =====================================================================
+   App-level styling that uses Inkwell tokens exclusively.
+   Every value below either references a var(--...) token or is a
+   layout primitive (px/%). No literal colors, per Inkwell rule #3.
+   ===================================================================== */
 @layer base {
+  /* Inherited shadcn preflight: default border-color on every element so
+     bare `border` / `border-b` utilities pick up the theme color. Resolves
+     to var(--gray-300) via tailwind.config.js. */
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground font-sans;
-    /* Subtle texture for dark theme - removed dots for cleaner look */
+
+  html {
+    /* Inkwell rule: page background is --ivory, text is --slate (never pure
+       white/black). Tailwind's preflight already sets sensible defaults;
+       this anchors the app shell. */
+    background: var(--ivory);
+    color: var(--slate);
   }
-  
-  /* Dark theme scrollbars with gradient */
+
+  body {
+    font-family: var(--sans);
+    line-height: 1.55;
+  }
+
+  /* Token-driven scrollbar. Replaces the legacy teal-gradient scrollbar
+     which violated Inkwell's "no surface gradients, single accent" rules. */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
-
   ::-webkit-scrollbar-track {
-    background: hsl(var(--dark-accent));
-    border-radius: 5px;
+    background: var(--gray-100);
   }
-
   ::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, hsl(var(--dark-teal)) 0%, hsl(185 90% 55%) 100%);
-    border-radius: 5px;
-    border: 2px solid hsl(var(--dark-accent));
-    transition: all 0.3s ease;
+    background: var(--gray-300);
+    border-radius: var(--r-pill);
+    border: 2px solid var(--gray-100);
   }
-
   ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, hsl(185 90% 55%) 0%, hsl(var(--dark-teal)) 100%);
-    box-shadow: 0 0 10px rgba(30, 159, 170, 0.5);
+    background: var(--gray-500);
   }
-
   ::-webkit-scrollbar-corner {
-    background: hsl(var(--dark-accent));
-  }
-
-  /* Smooth scroll behavior */
-  html {
-    scroll-behavior: smooth;
+    background: var(--gray-100);
   }
 }
 
 @layer components {
-  .manuscript-page {
-    @apply bg-card shadow-lg border border-border;
-    box-shadow: 
-      0 4px 8px -2px hsl(var(--border) / 0.2),
-      0 2px 4px -1px hsl(var(--border) / 0.1);
-  }
-  
-  .manuscript-sidebar {
-    @apply bg-card border-r border-border;
-    background: linear-gradient(135deg, 
-      hsl(var(--card)) 0%, 
-      hsl(var(--dark-accent)) 100%);
-  }
-  
-  .manuscript-text {
-    @apply text-foreground leading-relaxed;
-    text-rendering: optimizeLegibility;
-    font-feature-settings: "liga", "kern";
-  }
-  
-  .manuscript-heading {
-    @apply text-foreground font-semibold tracking-wide;
-    font-feature-settings: "smcp";
-  }
-  
-  .manuscript-button {
-    @apply transition-all duration-200 ease-in-out;
-    box-shadow: 
-      0 1px 3px hsl(var(--border) / 0.3),
-      inset 0 1px 0 hsl(var(--background) / 0.1);
-  }
-  
-  .manuscript-button:hover {
-    transform: translateY(-1px);
-    box-shadow: 
-      0 2px 6px hsl(var(--border) / 0.4),
-      inset 0 1px 0 hsl(var(--background) / 0.1);
-  }
-  
-  /* Dark theme specific classes */
-  .dark-panel {
-    @apply bg-card border border-border;
+  /* App shell surfaces. Sidebar reads as a recessed panel against the
+     page (--ivory), main panel reads as paper. Both bordered with the
+     signature 1.5px hairline. */
+  .app-sidebar {
+    background: var(--ivory);
+    border-right: var(--border);
   }
 
-  .dark-text-primary {
-    @apply text-dark-text;
+  .app-panel {
+    background: var(--paper);
   }
 
-  .dark-text-muted {
-    @apply text-dark-muted;
+  /* Token-driven keyboard-focus ring for non-native interactive
+     elements (Inkwell already styles :focus-visible globally; this
+     helper opts arbitrary elements into the same treatment). */
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
+}
 
-  .dark-accent-teal {
-    @apply text-dark-teal;
-  }
-
-  .dark-accent-gold {
-    @apply text-dark-gold;
-  }
-
-  /* Glassmorphism effects */
-  .glass-panel {
-    background: rgba(26, 30, 36, 0.85);
-    backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(30, 159, 170, 0.1);
-  }
-
-  .glass-modal {
-    background: rgba(36, 40, 49, 0.95);
-    backdrop-filter: blur(24px) saturate(190%);
-    border: 1px solid rgba(30, 159, 170, 0.15);
-    box-shadow:
-      0 20px 40px rgba(0, 0, 0, 0.6),
-      0 10px 10px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-
-  .glass-card {
-    background: rgba(36, 40, 49, 0.6);
-    backdrop-filter: blur(16px) saturate(150%);
-    border: 1px solid rgba(30, 159, 170, 0.08);
-  }
-
-  /* Shadow system - 4 elevation levels */
-  .shadow-elevation-1 {
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.3),
-      0 1px 2px rgba(0, 0, 0, 0.2);
-  }
-
-  .shadow-elevation-2 {
-    box-shadow:
-      0 4px 8px rgba(0, 0, 0, 0.4),
-      0 2px 4px rgba(0, 0, 0, 0.3);
-  }
-
-  .shadow-elevation-3 {
-    box-shadow:
-      0 10px 20px rgba(0, 0, 0, 0.5),
-      0 6px 6px rgba(0, 0, 0, 0.4);
-  }
-
-  .shadow-elevation-4 {
-    box-shadow:
-      0 20px 40px rgba(0, 0, 0, 0.6),
-      0 10px 10px rgba(0, 0, 0, 0.5);
-  }
-
-  /* Gradient text effects */
-  .gradient-text-teal {
-    background: linear-gradient(135deg, hsl(var(--dark-teal)) 0%, hsl(185 90% 55%) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  .gradient-text-gold {
-    background: linear-gradient(135deg, hsl(var(--dark-gold)) 0%, hsl(45 95% 75%) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  /* Gradient borders */
-  .gradient-border-teal {
-    position: relative;
-    border: 2px solid transparent;
-    background: linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
-                linear-gradient(135deg, hsl(var(--dark-teal)) 0%, hsl(185 90% 55%) 100%) border-box;
-  }
-
-  .gradient-border-gold {
-    position: relative;
-    border: 2px solid transparent;
-    background: linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
-                linear-gradient(135deg, hsl(var(--dark-gold)) 0%, hsl(45 95% 75%) 100%) border-box;
-  }
-
-  /* Hover glow effects */
-  .hover-glow-teal {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .hover-glow-teal:hover {
-    box-shadow:
-      0 0 20px rgba(30, 159, 170, 0.4),
-      0 0 40px rgba(30, 159, 170, 0.2),
-      0 4px 8px rgba(0, 0, 0, 0.4);
-  }
-
-  .hover-glow-gold {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .hover-glow-gold:hover {
-    box-shadow:
-      0 0 20px rgba(245, 215, 114, 0.4),
-      0 0 40px rgba(245, 215, 114, 0.2),
-      0 4px 8px rgba(0, 0, 0, 0.4);
-  }
-
-  /* Interactive item hover effects */
-  .item-hover {
-    @apply transition-all duration-200 ease-out;
-  }
-
-  .item-hover:hover {
-    @apply bg-accent/10 border-l-2 border-l-dark-teal;
-    transform: translateX(2px);
-  }
-
-  /* Smooth animations */
+@layer utilities {
+  /* Motion utilities used by enter animations. Durations match
+     Inkwell's --t-base / --t-slow scale. */
   .animate-smooth {
-    animation: smooth-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: smooth-in var(--t-slow) var(--ease-out);
   }
-
   @keyframes smooth-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
   .animate-fade-in {
-    animation: fade-in 0.2s ease-out;
+    animation: fade-in var(--t-base) ease-out;
   }
-
   @keyframes fade-in {
     from { opacity: 0; }
-    to { opacity: 1; }
+    to   { opacity: 1; }
   }
 
   .animate-slide-up {
-    animation: slide-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: slide-up var(--t-slow) var(--ease-out);
   }
-
   @keyframes slide-up {
-    from {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Loading pulse with gradient */
-  .loading-pulse {
-    animation: pulse-gradient 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    background: linear-gradient(
-      90deg,
-      hsl(var(--muted)) 0%,
-      hsl(var(--dark-accent)) 50%,
-      hsl(var(--muted)) 100%
-    );
-    background-size: 200% 100%;
-  }
-
-  @keyframes pulse-gradient {
-    0%, 100% { background-position: 0% 0%; }
-    50% { background-position: 100% 0%; }
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 }

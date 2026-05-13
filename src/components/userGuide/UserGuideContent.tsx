@@ -4,9 +4,9 @@
  */
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { Copy, Check, ExternalLink, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useUserGuideStore } from '../../stores/userGuideStore';
-
+import { getSectionById } from '../../content/userGuide/contentLoader';
 import { GuideSection } from '../../types/userGuide';
 import { Button } from '../ui/button';
 import { processMarkdown } from '../../lib/utils/markdownProcessor';
@@ -255,10 +255,14 @@ export const UserGuideContent: React.FC<UserGuideContentProps> = ({ className = 
         }
         
         // Create new virtual scroll manager with memory limits
+        // Query content elements to pass to VirtualScrollManager
+        const contentElements = Array.from(
+          contentRef.current.querySelectorAll('h1, h2, h3, h4, h5, h6, p, pre, ul, ol, blockquote, table')
+        ) as HTMLElement[];
+
         virtualScrollRef.current = new VirtualScrollManager({
           container: contentRef.current,
-          items: [],
-          itemHeight: 50,
+          items: contentElements,
           maxItemsLimit: 100 // Limit to prevent memory issues
         });
       } catch (err) {

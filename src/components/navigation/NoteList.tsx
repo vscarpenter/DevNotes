@@ -6,7 +6,7 @@
 
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FixedSizeList as List } from 'react-window';
+import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
 import {
   FileText,
   MoreVertical,
@@ -87,10 +87,10 @@ const NoteItem: React.FC<NoteItemProps> = ({
     <div
       {...dragProps}
       className={cn(
-        "flex items-start gap-3 p-4 border-b border-manuscript-shadow cursor-pointer transition-all duration-200",
-        "hover:bg-manuscript-parchment hover:shadow-sm manuscript-text item-hover",
-        isSelected && "bg-manuscript-gold/20 text-manuscript-ink border-manuscript-gold/30",
-        isDragging && "opacity-50 cursor-grabbing scale-95"
+        "flex items-start gap-3 p-4 border-b border-border cursor-pointer transition-colors duration-base",
+        "hover:bg-[var(--gray-100)]",
+        isSelected && "bg-[var(--accent-tint)] border-l-2 border-l-accent",
+        isDragging && "opacity-50 cursor-grabbing"
       )}
       onClick={() => onSelect(note.id)}
       onContextMenu={(e) => onContextMenu(note, e)}
@@ -98,17 +98,14 @@ const NoteItem: React.FC<NoteItemProps> = ({
     >
       {/* Note icon */}
       <div className="flex-shrink-0 mt-1">
-        <FileText className="h-4 w-4 text-manuscript-gold" />
+        <FileText className="h-4 w-4 text-accent" />
       </div>
-      
+
       {/* Note content */}
       <div className="flex-1 min-w-0">
         {/* Title and metadata row */}
         <div className="flex items-center justify-between gap-2 mb-1">
-          <h3 className={cn(
-            "font-medium text-sm truncate manuscript-heading",
-            isSelected ? "text-manuscript-ink" : "text-manuscript-ink"
-          )}>
+          <h3 className="font-medium text-sm truncate text-foreground font-serif">
             {note.title}
           </h3>
           <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
@@ -478,12 +475,12 @@ export const NoteList: React.FC<NoteListProps> = ({
   }, [moveNote, moveModal]);
 
   // Virtual list row renderer
-  const Row = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
+  const Row = useCallback(({ index, style }: ListChildComponentProps) => {
     const note = filteredAndSortedNotes[index];
     const isSelected = selectedNoteId === note.id;
     
     return (
-      <div style={style} className="group">
+      <div style={style as React.CSSProperties} className="group">
         <NoteItem
           note={note}
           isSelected={isSelected}

@@ -72,12 +72,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
 
   return (
     <div className={cn(
-      'flex flex-col h-full manuscript-sidebar border-r border-manuscript-shadow',
+      'flex flex-col h-full app-sidebar',
       'w-full', // Take full width of parent container
       className
     )}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-manuscript-shadow/50">
+      <div className="flex items-center justify-between p-4 border-b border-border">
         <Logo size="sm" variant="full" className="min-w-0" />
         
         <div className="flex items-center gap-1">

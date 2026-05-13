@@ -240,7 +240,7 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
           isSelected && 'bg-accent',
           'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
           isDragging && 'opacity-50 cursor-grabbing',
-          isOver && canDrop && 'bg-dark-teal/20 border-l-2 border-l-dark-teal shadow-elevation-2',
+          isOver && canDrop && 'bg-[var(--accent-tint)] border-l-2 border-l-accent shadow-md',
           isOver && !canDrop && 'bg-destructive/10 border-l-2 border-l-destructive'
         )}
         style={{ paddingLeft: `${level * 16 + 8}px` }}

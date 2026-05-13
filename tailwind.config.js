@@ -1,4 +1,15 @@
 /** @type {import('tailwindcss').Config} */
+/*
+ * Tailwind theme is wired to the Inkwell design system: every color,
+ * font family, and radius below points at an Inkwell CSS variable.
+ * This means utilities like `bg-card`, `text-foreground`, and
+ * `border-border` resolve to Inkwell tokens — no parallel palette.
+ *
+ * Rules enforced here (see inkwell-tokens.css for source values):
+ *   - One accent only (--accent), no warm-toned neutrals
+ *   - Page = --ivory, text = --slate, never pure white/black
+ *   - Platform fonts only (--serif/--sans/--mono); no webfonts
+ */
 export default {
   content: [
     './pages/**/*.{ts,tsx}',
@@ -17,102 +28,112 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        serif: ['ui-serif', 'Georgia', 'Times New Roman', 'serif'], 
-        mono: ['Geist Mono', 'ui-monospace', 'SFMono-Regular', 'Consolas', 'monospace'],
-        manuscript: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans:  ['var(--sans)'],
+        serif: ['var(--serif)'],
+        mono:  ['var(--mono)'],
       },
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        /* Surfaces & text — direct Inkwell tokens */
+        ivory:      'var(--ivory)',
+        paper:      'var(--paper)',
+        slate:      'var(--slate)',
+        oat:        'var(--oat)',
+
+        /* Cool-putty neutral scale */
+        'gray-100': 'var(--gray-100)',
+        'gray-200': 'var(--gray-200)',
+        'gray-300': 'var(--gray-300)',
+        'gray-500': 'var(--gray-500)',
+        'gray-700': 'var(--gray-700)',
+
+        /* Inkwell semantic colors (single accent + signals) */
+        olive:   'var(--olive)',
+        rust:    'var(--rust)',
+        warning: 'var(--warning)',
+        info:    'var(--info)',
+        sky:     'var(--sky)',
+
+        /* Compatibility names — preserved so existing utilities
+           (bg-card, text-foreground, etc.) keep working, but every
+           one resolves to an Inkwell token. */
+        border:     'var(--gray-300)',
+        input:      'var(--paper)',
+        ring:       'var(--accent)',
+        background: 'var(--ivory)',
+        foreground: 'var(--slate)',
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT:      'var(--accent)',
+          foreground:   'var(--paper)',
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT:      'var(--gray-100)',
+          foreground:   'var(--slate)',
         },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT:      'var(--rust)',
+          foreground:   'var(--paper)',
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT:      'var(--gray-100)',
+          foreground:   'var(--gray-500)',
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT:      'var(--accent)',
+          foreground:   'var(--paper)',
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT:      'var(--paper)',
+          foreground:   'var(--slate)',
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        manuscript: {
-          parchment: "hsl(var(--manuscript-parchment))",
-          ink: "hsl(var(--manuscript-ink))",
-          gold: "hsl(var(--manuscript-gold))",
-          shadow: "hsl(var(--manuscript-shadow))",
-        },
-        dark: {
-          DEFAULT: "hsl(var(--dark))",
-          lighter: "hsl(var(--dark-lighter))",
-          accent: "hsl(var(--dark-accent))",
-          teal: "hsl(var(--dark-teal))",
-          gold: "hsl(var(--dark-gold))",
-          text: "hsl(var(--dark-text))",
-          muted: "hsl(var(--dark-muted))",
-          border: "hsl(var(--dark-border))",
+          DEFAULT:      'var(--paper)',
+          foreground:   'var(--slate)',
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: 'var(--r-lg)',
+        md: 'var(--r-md)',
+        sm: 'var(--r-sm)',
+        xs: 'var(--r-xs)',
+        xl: 'var(--r-xl)',
+      },
+      borderWidth: {
+        /* Inkwell rule #1: borders are 1.5px, never 1px. Override
+           Tailwind's default so bare `border`, `border-t`, `border-b`,
+           `border-l`, `border-r` utilities honor the signature
+           hairline without per-component changes. */
+        DEFAULT: '1.5px',
+        hairline: '1.5px',
+      },
+      boxShadow: {
+        sm: 'var(--shadow-sm)',
+        DEFAULT: 'var(--shadow-md)',
+        md: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
+        'card-hover': 'var(--shadow-card-hover)',
+      },
+      transitionTimingFunction: {
+        out:  'var(--ease-out)',
+        pop:  'var(--ease-pop)',
+      },
+      transitionDuration: {
+        fast: '120ms',
+        base: '150ms',
+        slow: '300ms',
       },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
+          to:   { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
           from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
-        },
-        "shimmer": {
-          "0%": { backgroundPosition: "-1000px 0" },
-          "100%": { backgroundPosition: "1000px 0" },
-        },
-        "glow": {
-          "0%, 100%": { boxShadow: "0 0 20px rgba(30, 159, 170, 0.3)" },
-          "50%": { boxShadow: "0 0 30px rgba(30, 159, 170, 0.6)" },
+          to:   { height: "0" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "shimmer": "shimmer 2s linear infinite",
-        "glow": "glow 2s ease-in-out infinite",
-      },
-      transitionTimingFunction: {
-        'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
-        'bounce': 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
-        'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
-      },
-      backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-        'gradient-teal': 'linear-gradient(135deg, hsl(var(--dark-teal)) 0%, hsl(185 90% 55%) 100%)',
-        'gradient-gold': 'linear-gradient(135deg, hsl(var(--dark-gold)) 0%, hsl(45 95% 75%) 100%)',
-        'gradient-teal-gold': 'linear-gradient(135deg, hsl(var(--dark-teal)) 0%, hsl(var(--dark-gold)) 100%)',
+        "accordion-up":   "accordion-up 0.2s ease-out",
       },
     },
   },

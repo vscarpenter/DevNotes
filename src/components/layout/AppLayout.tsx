@@ -115,12 +115,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {/* Sidebar */}
       <aside
         className={cn(
-          'relative flex-shrink-0 manuscript-sidebar',
+          'relative flex-shrink-0 app-sidebar',
           'transition-all duration-300 ease-out',
           isMobile && isSidebarCollapsed && 'absolute inset-y-0 left-0 z-50 transform -translate-x-full',
-          isMobile && !isSidebarCollapsed && 'absolute inset-y-0 left-0 z-50 shadow-xl',
+          isMobile && !isSidebarCollapsed && 'absolute inset-y-0 left-0 z-50 shadow-lg',
           !isMobile && isSidebarCollapsed && 'w-0 overflow-hidden',
-          !isMobile && !isSidebarCollapsed && 'overflow-visible shadow-sm'
+          !isMobile && !isSidebarCollapsed && 'overflow-visible'
         )}
         style={{
           width: isMobile ? (isSidebarCollapsed ? 0 : 280) : (isSidebarCollapsed ? 0 : sidebarWidth)
@@ -136,9 +136,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             ref={resizeRef}
             className={cn(
               'absolute top-0 right-0 w-1 h-full cursor-col-resize bg-transparent',
-              'hover:bg-manuscript-gold/30 transition-all duration-200 ease-in-out',
+              'hover:bg-[var(--accent-tint)] transition-colors duration-base ease-out',
               'group flex items-center justify-center focus-ring',
-              isResizing && 'bg-manuscript-gold/50'
+              isResizing && 'bg-[var(--accent-tint)]'
             )}
             onMouseDown={handleResizeStart}
             role="separator"
@@ -155,7 +155,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               }
             }}
           >
-            <div className="w-0.5 h-8 bg-border group-hover:bg-manuscript-gold/60 transition-all duration-200" />
+            <div className="w-0.5 h-8 bg-border group-hover:bg-accent transition-colors duration-base" />
           </div>
         )}
       </aside>
@@ -178,8 +178,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       )}
 
       {/* Main content area */}
-      <main 
-        className="flex-1 flex flex-col min-w-0 manuscript-page"
+      <main
+        className="flex-1 flex flex-col min-w-0 app-panel"
         role="main"
         aria-label="Main content"
       >

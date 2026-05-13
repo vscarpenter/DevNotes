@@ -206,16 +206,18 @@ export class DragDropManager {
   public getDragPreviewElement(dragData: DragData): HTMLElement {
     const preview = document.createElement('div');
     preview.className = 'drag-preview';
+    // --border is the Inkwell 1.5px shorthand, so it goes on `border:` directly.
     preview.style.cssText = `
       position: absolute;
       top: -1000px;
       left: -1000px;
-      background: var(--background);
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      background: var(--paper);
+      color: var(--slate);
+      border: var(--border);
+      border-radius: var(--r-sm);
       padding: 8px 12px;
       font-size: 14px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      box-shadow: var(--shadow-md);
       pointer-events: none;
       z-index: 1000;
     `;

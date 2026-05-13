@@ -181,26 +181,26 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     extensions.push(EditorView.theme({
       '&': {
         fontSize: `${fontSize}px`,
-        fontFamily: 'Georgia, "Crimson Text", serif',
+        fontFamily: 'var(--serif)',
         height: '100%',
-        backgroundColor: 'hsl(var(--manuscript-parchment))'
+        backgroundColor: 'var(--paper)'
       },
       '.cm-editor': {
         height: '100%',
-        backgroundColor: 'hsl(var(--manuscript-parchment))'
+        backgroundColor: 'var(--paper)'
       },
       '.cm-scroller': {
-        fontFamily: 'Georgia, "Crimson Text", serif',
+        fontFamily: 'var(--serif)',
         lineHeight: '1.6',
         overflow: 'auto',
-        backgroundColor: 'hsl(var(--manuscript-parchment))'
+        backgroundColor: 'var(--paper)'
       },
       '.cm-content': {
         padding: '24px 32px',
         minHeight: '100%',
         cursor: 'text',
-        color: 'hsl(var(--manuscript-ink))',
-        backgroundColor: 'hsl(var(--manuscript-parchment))'
+        color: 'var(--slate)',
+        backgroundColor: 'var(--paper)'
       },
       '.cm-focused': {
         outline: 'none'

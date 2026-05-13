@@ -1,11 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import '@fontsource/geist-sans/400.css'
-import '@fontsource/geist-sans/500.css'
-import '@fontsource/geist-sans/600.css'
-import '@fontsource/geist-mono/400.css'
-import '@fontsource/geist-mono/500.css'
 import App from './App.tsx'
+// Inkwell rule #5: platform fonts only — no webfont loaders. Type stacks come
+// from --serif / --sans / --mono defined in inkwell-tokens.css.
 import './styles/globals.css'
 
 // Handle PWA shortcuts and deep linking
